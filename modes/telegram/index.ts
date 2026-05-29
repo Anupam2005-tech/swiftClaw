@@ -11,10 +11,24 @@ export async function runTelegramMode() {
 
   registerHandler(bot);
 
-  await bot.telegram.sendMessage(ownerId!, WELCOME, { parse_mode: "Markdown" });
-  console.log(chalk.green("Telegram bot started on @swiftClawBot"));
+  try {
+    await bot.telegram.sendMessage(ownerId!, WELCOME, { parse_mode: "Markdown" });
+    console.log(chalk.green("Telegram bot started on @swiftClawBot"));
+  } catch (error: any) {
+    console.error(chalk.red("Failed to send welcome message to owner."));
+    console.error(chalk.red(error.message));
+  }
 
-  bot.launch();
+  bot.catch((err: any) => {
+    console.error(chalk.red("Telegram bot encountered an error:"));
+    console.error(chalk.red(err?.message || err));
+  });
+
+  bot.launch().catch((error: any) => {
+    console.error(chalk.red("Failed to launch Telegram bot."));
+    console.error(chalk.red(error.message));
+    process.exit(1);
+  });
   console.log(chalk.green("Telegram bot is running. Press Ctrl+C to stop.\n"));
   await new Promise<void>((resolve) => {
     const stop = () => {

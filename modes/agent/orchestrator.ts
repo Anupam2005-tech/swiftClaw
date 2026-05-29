@@ -1,7 +1,8 @@
-import { isCancel, text, spinner, log } from "@clack/prompts";
+import { isCancel, text, log } from "@clack/prompts";
 import chalk from "chalk";
 import { defaultAgentConfig } from "./types";
-import { ActionTracker } from "./action-tracker";
+import { ActionTracker as InternalTracker } from "./action-tracker";
+import { CliActionTracker } from "../../utils/action-tracker";
 import { ToolExecutor } from "./tool-executor";
 import { createAgentTools } from "./agent-tools";
 import { stepCountIs, ToolLoopAgent } from "ai";
@@ -20,10 +21,10 @@ export async function runAgentmode() {
   if (isCancel(goal) || !goal.trim()) return;
 
   const config = defaultAgentConfig();
-  const tracker = new ActionTracker();
-  const executor = new ToolExecutor(tracker, config);
-  const s = spinner();
-  const tools = createAgentTools(executor, (status) => s.message(status));
+  const internalTracker = new InternalTracker();
+  const executor = new ToolExecutor(internalTracker, config);
+  const uiTracker = new CliActionTracker();
+  const tools = createAgentTools(executor, uiTracker);
 
   const agent = new ToolLoopAgent({
     model: getAgentMode(),
@@ -32,7 +33,7 @@ export async function runAgentmode() {
     tools,
   });
 
-  s.start("Agent is thinking...");
+  uiTracker.start("Agent is thinking...");
 
   const result = await agent.generate({
     prompt: goal?.trim(),
@@ -43,14 +44,14 @@ export async function runAgentmode() {
           `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
         );
       }
-      s.message("Refining response...");
+      uiTracker.update("Refining response...");
     },
   });
 
-  s.stop("Finished thinking.");
+  uiTracker.stop("Finished thinking.");
   if (result.text?.trim()) console.log(renderTerminalMarkdown(result.text));
 
-  const ok = await runApprovalFlow(tracker);
+  const ok = await runApprovalFlow(internalTracker);
   if (!ok) return executor.clearStaging();
 
   const errors = executor.applyApprovedFromTracker();

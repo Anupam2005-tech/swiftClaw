@@ -36,7 +36,7 @@ function agentoptions(config: AgentConfig, maxSteps: number, instructions: strin
 
 function createReadOnlyTools(
   executor: ToolExecutor,
-  onStatus?: (status: string) => void,
+  uiTracker?: import("../../utils/action-tracker.ts").ActionTracker,
 ) {
   return {
     read_file: tool({
@@ -45,8 +45,12 @@ function createReadOnlyTools(
         path: z.string().describe("Relative path to the file"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Reading file: ${path}`);
-        return executor.readFile(path);
+        uiTracker?.update(`Reading file: ${path}`);
+        try {
+          return await executor.readFile(path);
+        } finally {
+          uiTracker?.update(`Finished reading file: ${path}`);
+        }
       },
     }),
 
@@ -57,8 +61,12 @@ function createReadOnlyTools(
         recursive: z.boolean().optional().default(false),
       }),
       execute: async ({ path, recursive }) => {
-        onStatus?.(`Listing files in: ${path}`);
-        return executor.listDirectory(path, recursive);
+        uiTracker?.update(`Listing files in: ${path}`);
+        try {
+          return await executor.listDirectory(path, recursive);
+        } finally {
+          uiTracker?.update(`Finished listing files`);
+        }
       },
     }),
     search_files: tool({
@@ -71,16 +79,24 @@ function createReadOnlyTools(
         content_contains: z.string().optional().describe("Optional substring to filter file contents"),
       }),
       execute: async ({ root, pattern, content_contains }) => {
-        onStatus?.(`Searching files in ${root} for ${pattern}`);
-        return executor.searchFiles(root, pattern, content_contains);
+        uiTracker?.update(`Searching files in ${root} for ${pattern}`);
+        try {
+          return await executor.searchFiles(root, pattern, content_contains);
+        } finally {
+          uiTracker?.update(`Finished search files`);
+        }
       },
     }),
     list_skills: tool({
       description: TOOL_DESCRIPTIONS.list_skills,
       inputSchema: z.object({}),
       execute: async () => {
-        onStatus?.("Listing available skills");
-        return executor.listSkills();
+        uiTracker?.update("Listing available skills");
+        try {
+          return await executor.listSkills();
+        } finally {
+          uiTracker?.update(`Finished listing skills`);
+        }
       },
     }),
 
@@ -90,8 +106,12 @@ function createReadOnlyTools(
         path: z.string().describe("Absolute path to a SKILL.md file (from list_skills)"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Reading skill docs: ${path}`);
-        return executor.readSkill(path);
+        uiTracker?.update(`Reading skill docs: ${path}`);
+        try {
+          return await executor.readSkill(path);
+        } finally {
+          uiTracker?.update(`Finished reading skill docs`);
+        }
       },
     }),
 
@@ -101,28 +121,46 @@ function createReadOnlyTools(
         path: z.string().default(".").describe("Relative path, defaults to project root"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Analyzing codebase at: ${path}`);
-        return executor.analyzeCodebase(path);
+        uiTracker?.update(`Analyzing codebase at: ${path}`);
+        try {
+          return await executor.analyzeCodebase(path);
+        } finally {
+          uiTracker?.update(`Finished analyzing codebase`);
+        }
       },
     }),
   };
 }
 
-function extraWebTools (tracker: ActionTracker) {
-return process.env.FIRECRAWL_API_KEY? createWebTools (tracker) : {};
+function extraWebTools(tracker: ActionTracker, uiTracker?: import("../../utils/action-tracker.ts").ActionTracker) {
+  return process.env.FIRECRAWL_API_KEY ? createWebTools(tracker, uiTracker) : {};
 }
 
-export async function runAsk(ctx: { reply: (t: string, o?: object) => Promise<unknown> }, question: string) {
+export async function runAsk(ctx: import("telegraf").Context, question: string) {
   const config = readOnlyConfig();
   const tracker = new ActionTracker();
   const executor = new ToolExecutor(tracker, config);
-  const tools = { ...createReadOnlyTools(executor), ...extraWebTools(tracker) };
+  
+  const { TelegramActionTracker } = await import("../../utils/action-tracker.ts");
+  const uiTracker = new TelegramActionTracker(ctx);
+  
+  const tools = { ...createReadOnlyTools(executor, uiTracker), ...extraWebTools(tracker, uiTracker) };
+  
+  uiTracker.start("Agent is thinking...");
+  
   const agent = new ToolLoopAgent({
     ...agentoptions(config, 20, getTelegramAskPrompt(config.codebasePath)),
     tools,
   });
 
-  const { text } = await agent.generate({ prompt: question });
+  const { text } = await agent.generate({ 
+    prompt: question,
+    onStepFinish: ({ toolCalls }) => {
+      uiTracker.update("Refining response...");
+    }
+  });
+  
+  uiTracker.stop("Finished thinking.");
   await replyMd(ctx, text || "no answer");
 }
 
@@ -179,25 +217,37 @@ export async function finishOrApprove(
   });
 }
 
-export async function runAgent(ctx: { reply: (t: string, o?: object) => Promise<unknown> }, chatId: number, goal: string) {
+export async function runAgent(ctx: import("telegraf").Context, chatId: number, goal: string) {
   const config = defaultAgentConfig();
   const tracker = new ActionTracker();
   const executor = new ToolExecutor(tracker, config);
-  const tools = createAgentTools(executor);
+  const { TelegramActionTracker } = await import("../../utils/action-tracker.ts");
+  const uiTracker = new TelegramActionTracker(ctx);
+  const tools = createAgentTools(executor, uiTracker);
+  
+  uiTracker.start("Agent is thinking...");
   const agent = new ToolLoopAgent({
     ...agentoptions(config, 40, getTelegramAgentPrompt(config.codebasePath)),
     tools,
   });
-  const { text } = await agent.generate({ prompt: goal });
+  const { text } = await agent.generate({ 
+    prompt: goal,
+    onStepFinish: () => {
+      uiTracker.update("Refining response...");
+    }
+  });
+  uiTracker.stop("Finished thinking.");
   if (text?.trim()) await replyMd(ctx, text.trim());
   await finishOrApprove(ctx, chatId, tracker, executor, '✔ Done. No file changes were needed.');
 }
 
-export async function runPlanSteps(ctx: { reply: (t: string, o?: object) => Promise<unknown> }, chatId: number, plan: Plan) {
+export async function runPlanSteps(ctx: import("telegraf").Context, chatId: number, plan: Plan) {
   const config = defaultAgentConfig();
   const tracker = new ActionTracker();
   const executor = new ToolExecutor(tracker, config);
-  const tools = { ...createAgentTools(executor), ...extraWebTools(tracker) };
+  const { TelegramActionTracker } = await import("../../utils/action-tracker.ts");
+  const uiTracker = new TelegramActionTracker(ctx);
+  const tools = { ...createAgentTools(executor, uiTracker), ...extraWebTools(tracker, uiTracker) };
 
   await ctx.reply(`*Starting plan execution...*`, { parse_mode: "Markdown" });
 
@@ -232,7 +282,14 @@ export async function runPlanSteps(ctx: { reply: (t: string, o?: object) => Prom
       content: `Step: ${step.title}\n${step.description}`
     });
 
-    const result = await agent.generate({ messages });
+    uiTracker.start("Agent is thinking...");
+    const result = await agent.generate({ 
+      messages,
+      onStepFinish: () => {
+        uiTracker.update("Refining response...");
+      }
+    });
+    uiTracker.stop("Finished step.");
     const { text, response } = result;
 
     if (text?.trim()) {

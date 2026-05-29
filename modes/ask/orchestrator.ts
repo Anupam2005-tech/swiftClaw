@@ -13,7 +13,7 @@ import { getAskSystemPrompt, TOOL_DESCRIPTIONS } from "../prompts";
 
 function createAskTools(
   executor: ToolExecutor,
-  onStatus?: (status: string) => void,
+  uiTracker?: import("../../utils/action-tracker").ActionTracker,
 ) {
   return {
     read_file: tool({
@@ -22,8 +22,12 @@ function createAskTools(
         path: z.string().describe("Relative path to the file"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Reading file: ${path}`);
-        return executor.readFile(path);
+        uiTracker?.update(`Reading file: ${path}`);
+        try {
+          return await executor.readFile(path);
+        } finally {
+          uiTracker?.update(`Finished reading file: ${path}`);
+        }
       },
     }),
 
@@ -34,8 +38,12 @@ function createAskTools(
         recursive: z.boolean().optional().default(false),
       }),
       execute: async ({ path, recursive }) => {
-        onStatus?.(`Listing files in: ${path}`);
-        return executor.listDirectory(path, recursive);
+        uiTracker?.update(`Listing files in: ${path}`);
+        try {
+          return await executor.listDirectory(path, recursive);
+        } finally {
+          uiTracker?.update(`Finished listing files`);
+        }
       },
     }),
     search_files: tool({
@@ -48,16 +56,24 @@ function createAskTools(
         content_contains: z.string().optional().describe("Optional substring to filter file contents"),
       }),
       execute: async ({ root, pattern, content_contains }) => {
-        onStatus?.(`Searching files in ${root} for ${pattern}`);
-        return executor.searchFiles(root, pattern, content_contains);
+        uiTracker?.update(`Searching files in ${root} for ${pattern}`);
+        try {
+          return await executor.searchFiles(root, pattern, content_contains);
+        } finally {
+          uiTracker?.update(`Finished search files`);
+        }
       },
     }),
     list_skills: tool({
       description: TOOL_DESCRIPTIONS.list_skills,
       inputSchema: z.object({}),
       execute: async () => {
-        onStatus?.("Listing available skills");
-        return executor.listSkills();
+        uiTracker?.update("Listing available skills");
+        try {
+          return await executor.listSkills();
+        } finally {
+          uiTracker?.update(`Finished listing skills`);
+        }
       },
     }),
 
@@ -67,8 +83,12 @@ function createAskTools(
         path: z.string().describe("Absolute path to a SKILL.md file (from list_skills)"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Reading skill docs: ${path}`);
-        return executor.readSkill(path);
+        uiTracker?.update(`Reading skill docs: ${path}`);
+        try {
+          return await executor.readSkill(path);
+        } finally {
+          uiTracker?.update(`Finished reading skill docs`);
+        }
       },
     }),
 
@@ -78,8 +98,12 @@ function createAskTools(
         path: z.string().default(".").describe("Relative path, defaults to project root"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Analyzing codebase at: ${path}`);
-        return executor.analyzeCodebase(path);
+        uiTracker?.update(`Analyzing codebase at: ${path}`);
+        try {
+          return await executor.analyzeCodebase(path);
+        } finally {
+          uiTracker?.update(`Finished analyzing codebase`);
+        }
       },
     }),
   };
@@ -113,13 +137,18 @@ export async function runAskMode() {
   const actionTracker = new ActionTracker();
   const executor = new ToolExecutor(actionTracker, config);
 
+  const { CliActionTracker } = await import("../../utils/action-tracker");
+  const uiTracker = new CliActionTracker();
+
   //   web search
   const hasweb = !!process.env.FIRECRAWL_API_KEY;
 
   const tools = {
-    ...createAskTools(executor),
-    ...(hasweb ? createWebTools(actionTracker) : {}),
+    ...createAskTools(executor, uiTracker),
+    ...(hasweb ? createWebTools(actionTracker, uiTracker) : {}),
   };
+
+  uiTracker.start("Agent is thinking...");
 
   const agent = new ToolLoopAgent({
     model: getAgentModel(),
@@ -130,7 +159,20 @@ export async function runAskMode() {
 
   const result = await agent.generate({
     prompt: questions.trim(),
+    onStepFinish: ({ toolCalls }) => {
+      for (const toolCall of toolCalls) {
+        if (!toolCall) continue;
+        const preview = JSON.stringify(toolCall.input).slice(0, 200);
+        const { log } = require("@clack/prompts");
+        log.step(
+          `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+        );
+      }
+      uiTracker.update("Refining response...");
+    },
   });
+  
+  uiTracker.stop("Finished thinking.");
   const answer = result.text?.trim() || "(no answer)";
   console.log(`\n +${renderTerminalMarkdown(answer)} + \n`);
 

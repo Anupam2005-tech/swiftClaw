@@ -34,7 +34,7 @@ const planSchema = z.object({
 
 function readOnlyTools(
   executor: ToolExecutor,
-  onStatus?: (status: string) => void,
+  tracker?: import("../../utils/action-tracker").ActionTracker
 ) {
   return {
     read_file: tool({
@@ -43,8 +43,12 @@ function readOnlyTools(
         path: z.string().describe("Relative path to the file"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Reading file: ${path}`);
-        return executor.readFile(path);
+        tracker?.update(`Calling read_file...`);
+        try {
+          return await executor.readFile(path);
+        } finally {
+          tracker?.update(`Finished read_file`);
+        }
       },
     }),
 
@@ -55,8 +59,12 @@ function readOnlyTools(
         recursive: z.boolean().optional().default(false),
       }),
       execute: async ({ path, recursive }) => {
-        onStatus?.(`Listing files in: ${path}`);
-        return executor.listDirectory(path, recursive);
+        tracker?.update(`Calling list_files...`);
+        try {
+          return await executor.listDirectory(path, recursive);
+        } finally {
+          tracker?.update(`Finished list_files`);
+        }
       },
     }),
     search_files: tool({
@@ -69,16 +77,24 @@ function readOnlyTools(
         content_contains: z.string().optional().describe("Optional substring to filter file contents"),
       }),
       execute: async ({ root, pattern, content_contains }) => {
-        onStatus?.(`Searching files in ${root} for ${pattern}`);
-        return executor.searchFiles(root, pattern, content_contains);
+        tracker?.update(`Calling search_files...`);
+        try {
+          return await executor.searchFiles(root, pattern, content_contains);
+        } finally {
+          tracker?.update(`Finished search_files`);
+        }
       },
     }),
     list_skills: tool({
       description: TOOL_DESCRIPTIONS.list_skills,
       inputSchema: z.object({}),
       execute: async () => {
-        onStatus?.("Listing available skills");
-        return executor.listSkills();
+        tracker?.update(`Calling list_skills...`);
+        try {
+          return await executor.listSkills();
+        } finally {
+          tracker?.update(`Finished list_skills`);
+        }
       },
     }),
 
@@ -88,8 +104,12 @@ function readOnlyTools(
         path: z.string().describe("Absolute path to a SKILL.md file (from list_skills)"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Reading skill docs: ${path}`);
-        return executor.readSkill(path);
+        tracker?.update(`Calling read_skill_docs...`);
+        try {
+          return await executor.readSkill(path);
+        } finally {
+          tracker?.update(`Finished read_skill_docs`);
+        }
       },
     }),
 
@@ -99,8 +119,12 @@ function readOnlyTools(
         path: z.string().default(".").describe("Relative path, defaults to project root"),
       }),
       execute: async ({ path }) => {
-        onStatus?.(`Analyzing codebase at: ${path}`);
-        return executor.analyzeCodebase(path);
+        tracker?.update(`Calling analyze_codebase...`);
+        try {
+          return await executor.analyzeCodebase(path);
+        } finally {
+          tracker?.update(`Finished analyze_codebase`);
+        }
       },
     }),
   };
@@ -111,6 +135,9 @@ export async function generatePlan(goal: string) {
   const config = defaultAgentConfig();
   const tracker = new ActionTracker();
   const executor = new ToolExecutor(tracker, config);
+  
+  const { CliActionTracker } = await import("../../utils/action-tracker.ts");
+  const uiTracker = new CliActionTracker();
 
   const hasweb = !!process.env.FIRECRAWL_API_KEY;
   const model = wrapLanguageModel({
@@ -120,10 +147,11 @@ export async function generatePlan(goal: string) {
 
   // todo: add web search tools
   const tools = {
-    ...readOnlyTools(executor),
-    ...(hasweb ? createWebTools(tracker) : {}),
+    ...readOnlyTools(executor, uiTracker),
+    ...(hasweb ? createWebTools(tracker, uiTracker) : {}),
   };
-  console.log(chalk.cyan("\n Researching & drafting a plan...\n"));
+  
+  uiTracker.start("Researching & drafting a plan...");
 
   const result = await generateText({
     model,
@@ -132,7 +160,20 @@ export async function generatePlan(goal: string) {
     system: getPlanSystemPrompt(config.codebasePath, hasweb),
     prompt: `User goal: \n${goal}`,
     output: Output.object({ schema: planSchema }),
+    onStepFinish: ({ toolCalls }) => {
+      for (const toolCall of toolCalls) {
+        if (!toolCall) continue;
+        const preview = JSON.stringify(toolCall.input).slice(0, 200);
+        const { log } = require("@clack/prompts");
+        log.step(
+          `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+        );
+      }
+      uiTracker.update("Refining plan...");
+    },
   });
+  
+  uiTracker.stop("Finished drafting plan.");
 
   const validated = planSchema.parse(result.output);
   const steps: PlanStep[] = validated.steps.map((s, i) => ({

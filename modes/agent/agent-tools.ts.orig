@@ -7,7 +7,7 @@ import { TOOL_DESCRIPTIONS } from "../prompts";
 
 export function createAgentTools(
   executor: ToolExecutor,
-  tracker?: import("../../utils/action-tracker").ActionTracker
+  onStatus?: (status: string) => void
 ) {
   return {
     read_file: tool({
@@ -16,12 +16,8 @@ export function createAgentTools(
         path: z.string().describe("Relative path to the file"),
       }),
       execute: async ({ path }) => {
-        tracker?.update(`Calling read_file...`);
-        try {
-          return await executor.readFile(path);
-        } finally {
-          tracker?.update(`Finished read_file`);
-        }
+        onStatus?.(`Reading file: ${path}`);
+        return executor.readFile(path);
       },
     }),
     createfile: tool({
@@ -31,13 +27,9 @@ export function createAgentTools(
         content: z.string().describe("Content of the file"),
       }),
       execute: async ({ path, content }) => {
-        tracker?.update(`Calling createfile...`);
-        try {
-          executor.createFile(path, content);
-          return `Successfully staged file creation for ${path}`;
-        } finally {
-          tracker?.update(`Finished createfile`);
-        }
+        onStatus?.(`Staging file creation: ${path}`);
+        executor.createFile(path, content);
+        return `Successfully staged file creation for ${path}`;
       },
     }),
 
@@ -48,13 +40,9 @@ export function createAgentTools(
         content: z.string().describe("Content of the file"),
       }),
       execute: async ({ path, content }) => {
-        tracker?.update(`Calling modify_file...`);
-        try {
-          executor.modifyFile(path, content);
-          return `Successfully staged file modification for ${path}`;
-        } finally {
-          tracker?.update(`Finished modify_file`);
-        }
+        onStatus?.(`Staging file modification: ${path}`);
+        executor.modifyFile(path, content);
+        return `Successfully staged file modification for ${path}`;
       },
     }),
 
@@ -64,13 +52,9 @@ export function createAgentTools(
         path: z.string(),
       }),
       execute: async ({ path }) => {
-        tracker?.update(`Calling delete_file...`);
-        try {
-          executor.deleteFile(path);
-          return `Successfully staged file deletion for ${path}`;
-        } finally {
-          tracker?.update(`Finished delete_file`);
-        }
+        onStatus?.(`Staging file deletion: ${path}`);
+        executor.deleteFile(path);
+        return `Successfully staged file deletion for ${path}`;
       },
     }),
 
@@ -80,13 +64,9 @@ export function createAgentTools(
         path: z.string().describe("Relative path to the folder"),
       }),
       execute: async ({ path }) => {
-        tracker?.update(`Calling create_Folder...`);
-        try {
-          executor.createFolder(path);
-          return `Successfully staged folder creation for ${path}`;
-        } finally {
-          tracker?.update(`Finished create_Folder`);
-        }
+        onStatus?.(`Staging folder creation: ${path}`);
+        executor.createFolder(path);
+        return `Successfully staged folder creation for ${path}`;
       },
     }),
 
@@ -97,12 +77,8 @@ export function createAgentTools(
         recursive: z.boolean().optional().default(false),
       }),
       execute: async ({ path, recursive }) => {
-        tracker?.update(`Calling list_files...`);
-        try {
-          return await executor.listDirectory(path, recursive);
-        } finally {
-          tracker?.update(`Finished list_files`);
-        }
+        onStatus?.(`Listing files in: ${path}`);
+        return executor.listDirectory(path, recursive);
       },
     }),
 
@@ -116,12 +92,8 @@ export function createAgentTools(
         content_contains: z.string().optional().describe("Optional substring to filter file contents"),
       }),
       execute: async ({ root, pattern, content_contains }) => {
-        tracker?.update(`Calling search_files...`);
-        try {
-          return await executor.searchFiles(root, pattern, content_contains);
-        } finally {
-          tracker?.update(`Finished search_files`);
-        }
+        onStatus?.(`Searching files in ${root} for ${pattern}`);
+        return executor.searchFiles(root, pattern, content_contains);
       },
     }),
 
@@ -131,12 +103,8 @@ export function createAgentTools(
         path: z.string().default(".").describe("Relative path, defaults to project root"),
       }),
       execute: async ({ path }) => {
-        tracker?.update(`Calling analyze_codebase...`);
-        try {
-          return await executor.analyzeCodebase(path);
-        } finally {
-          tracker?.update(`Finished analyze_codebase`);
-        }
+        onStatus?.(`Analyzing codebase at: ${path}`);
+        return executor.analyzeCodebase(path);
       },
     }),
 
@@ -146,25 +114,17 @@ export function createAgentTools(
         command: z.string().describe("Single command; runs with shell: true"),
       }),
       execute: async ({ command }) => {
-        tracker?.update(`Calling execute_shell...`);
-        try {
-          executor.queueShell(command);
-          return `Command staged successfully for execution. Pending user approval.`;
-        } finally {
-          tracker?.update(`Finished execute_shell`);
-        }
+        onStatus?.(`Staging shell command: ${command}`);
+        executor.queueShell(command);
+        return `Command staged successfully for execution. Pending user approval.`;
       },
     }),
     list_skills: tool({
       description: TOOL_DESCRIPTIONS.list_skills,
       inputSchema: z.object({}),
       execute: async () => {
-        tracker?.update(`Calling list_skills...`);
-        try {
-          return await executor.listSkills();
-        } finally {
-          tracker?.update(`Finished list_skills`);
-        }
+        onStatus?.("Listing available skills");
+        return executor.listSkills();
       },
     }),
 
@@ -174,12 +134,8 @@ export function createAgentTools(
         path:z.string().describe("Absolute path to a SKILL.md file (from list_skills)"),
       }),
       execute: async ({ path }) => {
-        tracker?.update(`Calling read_skill_docs...`);
-        try {
-          return await executor.readSkill(path);
-        } finally {
-          tracker?.update(`Finished read_skill_docs`);
-        }
+        onStatus?.(`Reading skill docs: ${path}`);
+        return executor.readSkill(path);
       },
     })
   };

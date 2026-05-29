@@ -1,0 +1,140 @@
+--- modes/agent/agent-tools.ts
++++ modes/agent/agent-tools.ts
+@@ -8,3 +8,3 @@
+ export function createAgentTools(
+   executor: ToolExecutor,
+-  onStatus?: (status: string) => void
++  tracker?: import("../../utils/action-tracker").ActionTracker
+ ) {
+@@ -17,4 +17,9 @@
+       execute: async ({ path }) => {
+-        onStatus?.(`Reading file: ${path}`);
+-        return executor.readFile(path);
++        tracker?.update(`Calling read_file...`);
++        try {
++          const res = executor.readFile(path);
++          return res;
++        } finally {
++          tracker?.update(`Finished read_file`);
++        }
+       },
+@@ -28,4 +33,9 @@
+       execute: async ({ path, content }) => {
+-        onStatus?.(`Staging file creation: ${path}`);
+-        executor.createFile(path, content);
+-        return `Successfully staged file creation for ${path}`;
++        tracker?.update(`Calling createfile...`);
++        try {
++          executor.createFile(path, content);
++          return `Successfully staged file creation for ${path}`;
++        } finally {
++          tracker?.update(`Finished createfile`);
++        }
+       },
+@@ -41,4 +51,9 @@
+       execute: async ({ path, content }) => {
+-        onStatus?.(`Staging file modification: ${path}`);
+-        executor.modifyFile(path, content);
+-        return `Successfully staged file modification for ${path}`;
++        tracker?.update(`Calling modify_file...`);
++        try {
++          executor.modifyFile(path, content);
++          return `Successfully staged file modification for ${path}`;
++        } finally {
++          tracker?.update(`Finished modify_file`);
++        }
+       },
+@@ -53,4 +68,9 @@
+       execute: async ({ path }) => {
+-        onStatus?.(`Staging file deletion: ${path}`);
+-        executor.deleteFile(path);
+-        return `Successfully staged file deletion for ${path}`;
++        tracker?.update(`Calling delete_file...`);
++        try {
++          executor.deleteFile(path);
++          return `Successfully staged file deletion for ${path}`;
++        } finally {
++          tracker?.update(`Finished delete_file`);
++        }
+       },
+@@ -65,4 +85,9 @@
+       execute: async ({ path }) => {
+-        onStatus?.(`Staging folder creation: ${path}`);
+-        executor.createFolder(path);
+-        return `Successfully staged folder creation for ${path}`;
++        tracker?.update(`Calling create_Folder...`);
++        try {
++          executor.createFolder(path);
++          return `Successfully staged folder creation for ${path}`;
++        } finally {
++          tracker?.update(`Finished create_Folder`);
++        }
+       },
+@@ -78,4 +103,9 @@
+       execute: async ({ path, recursive }) => {
+-        onStatus?.(`Listing files in: ${path}`);
+-        return executor.listDirectory(path, recursive);
++        tracker?.update(`Calling list_files...`);
++        try {
++          return executor.listDirectory(path, recursive);
++        } finally {
++          tracker?.update(`Finished list_files`);
++        }
+       },
+@@ -93,4 +123,9 @@
+       execute: async ({ root, pattern, content_contains }) => {
+-        onStatus?.(`Searching files in ${root} for ${pattern}`);
+-        return executor.searchFiles(root, pattern, content_contains);
++        tracker?.update(`Calling search_files...`);
++        try {
++          return executor.searchFiles(root, pattern, content_contains);
++        } finally {
++          tracker?.update(`Finished search_files`);
++        }
+       },
+@@ -104,4 +139,9 @@
+       execute: async ({ path }) => {
+-        onStatus?.(`Analyzing codebase at: ${path}`);
+-        return executor.analyzeCodebase(path);
++        tracker?.update(`Calling analyze_codebase...`);
++        try {
++          return executor.analyzeCodebase(path);
++        } finally {
++          tracker?.update(`Finished analyze_codebase`);
++        }
+       },
+@@ -115,4 +155,9 @@
+       execute: async ({ command }) => {
+-        onStatus?.(`Staging shell command: ${command}`);
+-        executor.queueShell(command);
+-        return `Command staged successfully for execution. Pending user approval.`;
++        tracker?.update(`Calling execute_shell...`);
++        try {
++          executor.queueShell(command);
++          return `Command staged successfully for execution. Pending user approval.`;
++        } finally {
++          tracker?.update(`Finished execute_shell`);
++        }
+       },
+@@ -124,4 +169,9 @@
+       execute: async () => {
+-        onStatus?.("Listing available skills");
+-        return executor.listSkills();
++        tracker?.update(`Calling list_skills...`);
++        try {
++          return executor.listSkills();
++        } finally {
++          tracker?.update(`Finished list_skills`);
++        }
+       },
+@@ -135,4 +185,9 @@
+       execute: async ({ path }) => {
+-        onStatus?.(`Reading skill docs: ${path}`);
+-        return executor.readSkill(path);
++        tracker?.update(`Calling read_skill_docs...`);
++        try {
++          return executor.readSkill(path);
++        } finally {
++          tracker?.update(`Finished read_skill_docs`);
++        }
+       },

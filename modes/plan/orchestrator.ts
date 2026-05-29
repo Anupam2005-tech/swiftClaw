@@ -3,6 +3,7 @@ import { confirm, isCancel, text, spinner, log } from "@clack/prompts";
 import { ToolLoopAgent, stepCountIs } from "ai";
 import { getAgentModel } from "../../ai/ai.config";
 import { ActionTracker } from "../agent/action-tracker";
+import { CliActionTracker } from "../../utils/action-tracker";
 import { ToolExecutor } from "../agent/tool-executor";
 import { createAgentTools } from "../agent/agent-tools";
 import { defaultAgentConfig } from "../agent/types";
@@ -40,19 +41,19 @@ export async function runPlanMode(): Promise<void> {
   if (isCancel(proceed) || !proceed) return;
 
   const config = defaultAgentConfig();
-  const tracker = new ActionTracker();
-  const executor = new ToolExecutor(tracker, config);
+  const internalTracker = new ActionTracker();
+  const executor = new ToolExecutor(internalTracker, config);
+  const uiTracker = new CliActionTracker();
 
   const hasweb = !!process.env.FIRECRAWL_API_KEY;
   const tools = {
-    ...createAgentTools(executor),
-    ...(hasweb ? createWebTools(tracker) : {}),
+    ...createAgentTools(executor, uiTracker),
+    ...(hasweb ? createWebTools(internalTracker, uiTracker) : {}),
   };
 
-  const s = spinner();
   for (const step of selected) {
     console.log(chalk.bold(`\nExecuting Step: ${step.title}\n`));
-    s.start("Agent is thinking...");
+    uiTracker.start("Agent is thinking...");
     const agent = new ToolLoopAgent({
       model: getAgentModel(),
       stopWhen: stepCountIs(30),
@@ -75,16 +76,16 @@ export async function runPlanMode(): Promise<void> {
             `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
           );
         }
-        s.message("Refining response...");
+        uiTracker.update("Refining response...");
       },
     });
-    s.stop("Finished thinking.");
+    uiTracker.stop("Finished thinking.");
     if (result.text?.trim()) {
       console.log(renderTerminalMarkdown(result.text));
     }
   }
 
-  const ok = await runApprovalFlow(tracker);
+  const ok = await runApprovalFlow(internalTracker);
   if (!ok) return executor.clearStaging();
 
   const errors = executor.applyApprovedFromTracker();
