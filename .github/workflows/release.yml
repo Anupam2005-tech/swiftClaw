@@ -1,0 +1,36 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Compile Binaries
+        run: bun run scripts/compile.ts
+
+      - name: Create Release and Upload Binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/bin/swiftclaw-macos-arm64
+            dist/bin/swiftclaw-macos-x64
+            dist/bin/swiftclaw-linux-arm64
+            dist/bin/swiftclaw-linux-x64
+            dist/bin/swiftclaw-windows-x64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

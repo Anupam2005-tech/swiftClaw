@@ -1,0 +1,41 @@
+{
+  "name": "swiftclaw",
+  "version": "1.0.1",
+  "description": "AI agent and terminal companion tool",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "swiftclaw": "dist/index.js",
+    "swiftClaw": "dist/index.js"
+  },
+  "files": [
+    "dist/index.js"
+  ],
+  "scripts": {
+    "build": "bun build ./index.ts --target=node --outfile=dist/index.js --format=esm --external=commander --external=@clack/core --external=@clack/prompts --external=@mendable/firecrawl-js --external=@openrouter/ai-sdk-provider --external=ai --external=chalk --external=diff --external=figlet --external=marked --external=marked-terminal --external=telegraf --external=zod"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/marked-terminal": "^6.1.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@clack/core": "^1.3.1",
+    "@clack/prompts": "^1.4.0",
+    "@mendable/firecrawl-js": "^4.25.1",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
+    "@types/node": "^25.9.1",
+    "ai": "^6.0.191",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "diff": "^9.0.0",
+    "dotenv": "^17.4.2",
+    "figlet": "^1.11.0",
+    "marked": "^18.0.4",
+    "marked-terminal": "^7.3.0",
+    "telegraf": "^4.16.3",
+    "zod": "^4.4.3"
+  }
+}
