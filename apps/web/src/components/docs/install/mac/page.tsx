@@ -1,64 +1,51 @@
-"use client";
-
-import React from "react";
 import { ScrollReveal } from "@/components/landing/scroll-reveal";
-import { Apple, ArrowRight, CheckCircle, Download, Terminal } from "lucide-react";
+import { CopyBlock, DocBreadcrumb, DocHeader, DocSection, DocTable } from "@/components/docs/doc-chrome";
+import { BINARIES, INSTALL, releaseAssetUrl } from "@/lib/swiftclaw-docs";
 
 export default function MacInstallPage() {
   return (
     <ScrollReveal className="space-y-12 selection:bg-[#FFFDF9] selection:text-black">
-      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#FFFDF9]/40 select-none pointer-events-none">
-        <span>Deployment</span>
-        <ArrowRight className="h-3 w-3 opacity-30" />
-        <span className="text-[#FFFDF9]/80">macOS Binary</span>
-      </div>
+      <DocBreadcrumb section="Deployment" page="macOS" />
 
-      <header className="space-y-4 border-b border-[#FFFDF9]/10 pb-8">
-        <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tight text-[#FFFDF9]">
-          Apple Silicon Ready.
-        </h1>
-        <p className="font-body text-base font-light leading-relaxed text-[#FFFDF9]/60 max-w-2xl">
-          Optimized for M1, M2, and M3 architectures. Experience native performance with full integration into macOS terminal environments.
+      <DocHeader title="macOS">
+        <p>
+          Apple Silicon (arm64) and Intel (x64) are supported. Easiest path: the install script. Manual download is available from
+          GitHub Releases.
         </p>
-      </header>
+      </DocHeader>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-[#FFFDF9]/10 bg-[#0A0A0A]/60 p-6 backdrop-blur-sm relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#FFFDF9]/10 to-transparent" />
-          <Apple className="h-5 w-5 text-[#FFFDF9] mb-4 opacity-70 group-hover:opacity-100 transition-opacity" />
-          <h3 className="font-display text-lg font-bold text-[#FFFDF9] mb-2">Native Binary</h3>
-          <p className="font-body text-xs font-light leading-relaxed text-[#FFFDF9]/50">
-            We provide pre-compiled binaries for ARM64, eliminating the need for Rosetta 2 and maximizing energy efficiency.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[#FFFDF9]/10 bg-[#0A0A0A]/60 p-6 backdrop-blur-sm relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#FFFDF9]/10 to-transparent" />
-          <Download className="h-5 w-5 text-[#FFFDF9] mb-4 opacity-70 group-hover:opacity-100 transition-opacity" />
-          <h3 className="font-display text-lg font-bold text-[#FFFDF9] mb-2">Homebrew Support</h3>
-          <p className="font-body text-xs font-light leading-relaxed text-[#FFFDF9]/50">
-            Prefer package managers? Install swiftClaw via Homebrew for easier updates and dependency management.
-          </p>
-        </div>
-      </section>
+      <DocSection title="Recommended — install script">
+        <CopyBlock command={INSTALL.curlOneLiner} />
+      </DocSection>
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#FFFDF9]/40 select-none pointer-events-none">
-          <Terminal className="h-3 w-3" />
-          <span>Installation Step</span>
-        </div>
-        <div className="relative overflow-hidden rounded-xl border border-[#FFFDF9]/15 bg-[#050505] p-5 font-mono text-xs sm:text-sm text-[#FFFDF9]">
-          <div className="flex gap-4">
-            <span className="text-[#FFFDF9]/30 select-none">$</span>
-            <span>brew install swiftclaw/tap/swiftclaw</span>
-          </div>
-        </div>
-      </section>
+      <DocSection title="Manual binary">
+        <DocTable
+          headers={["Chip", "Asset", "Download"]}
+          rows={[
+            [
+              "Apple Silicon (M1/M2/M3)",
+              BINARIES.macos.arm64,
+              <a key="a" href={releaseAssetUrl(BINARIES.macos.arm64)} className="text-[#FFFDF9] underline" target="_blank" rel="noreferrer">Download</a>,
+            ],
+            [
+              "Intel",
+              BINARIES.macos.x64,
+              <a key="i" href={releaseAssetUrl(BINARIES.macos.x64)} className="text-[#FFFDF9] underline" target="_blank" rel="noreferrer">Download</a>,
+            ],
+          ]}
+        />
+        <p className="text-sm text-[#FFFDF9]/55">Then:</p>
+        <CopyBlock command={`chmod +x swiftclaw-macos-arm64
+mv swiftclaw-macos-arm64 ~/.local/bin/swiftClaw
+ln -sf ~/.local/bin/swiftClaw ~/.local/bin/swiftclaw
+export PATH="$PATH:$HOME/.local/bin"
+swiftclaw`} />
+      </DocSection>
 
-      <blockquote className="border-l border-[#FFFDF9]/30 bg-[#FFFDF9]/[0.02] p-4 rounded-r-xl">
-        <p className="font-body text-xs font-light italic leading-relaxed text-[#FFFDF9]/60">
-          "macOS User Note: You may need to allow the binary to run in System Settings &gt; Privacy &amp; Security if you are installing via direct download."
-        </p>
-      </blockquote>
+      <DocSection title="npm / bun (alternative)">
+        <CopyBlock command={INSTALL.npmGlobal} label="npm global" />
+        <CopyBlock command={INSTALL.bunGlobal} label="bun global" />
+      </DocSection>
     </ScrollReveal>
   );
 }

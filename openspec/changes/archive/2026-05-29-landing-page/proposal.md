@@ -1,6 +1,6 @@
 ## Why
 
-swiftClaw lacks a public marketing site at `swiftclaw.dev`. The unified PRD ([swiftclaw-prd-frd.md](../../../swiftclaw-prd-frd.md)) defines **FR-008** and **Section 4 (UI/UX Architecture)** — a premium dark-mode landing page that showcases modes, Telegram gateway, and install paths. This change delivers that web presence.
+swiftClaw lacks a public marketing site at `swiftclaw.online`. The unified PRD ([swiftclaw-prd-frd.md](../../../swiftclaw-prd-frd.md)) defines **FR-008** and **Section 4 (UI/UX Architecture)** — a premium dark-mode landing page that showcases modes, Telegram gateway, and install paths. This change delivers that web presence.
 
 ## What Changes
 
@@ -13,7 +13,7 @@ swiftClaw lacks a public marketing site at `swiftclaw.dev`. The unified PRD ([sw
 
 ### New Capabilities
 
-- `landing-page`: Marketing and distribution hub for swiftClaw at `swiftclaw.dev`.
+- `landing-page`: Marketing and distribution hub for swiftClaw at `swiftclaw.online`.
 
 ### Modified Capabilities
 

@@ -3,9 +3,10 @@ import chalk from "chalk";
 import figlet,  { type FontName } from "figlet";
 import { runCliMode } from "../modes/cli";
 import { runTelegramMode } from "../modes/telegram";
+import pkg from "../package.json" with { type: "json" };
 
 // ── DESIGN SYSTEM (SaaS Premium Palette) ───────────────────────────
-const THEME = {
+export const THEME = {
   accent: chalk.hex("#10B981").bold,    // High-contrast Emerald
   primary: chalk.hex("#bc5c5cff").bold,   // Crisp White
   secondary: chalk.hex("#71717A"),      // Muted Slate
@@ -48,7 +49,7 @@ function renderResponsiveBanner(text: string) {
 function printStatusLine() {
   const terminalWidth = process.stdout.columns || 80;
   const label = " ENGINE: ACTIVE ";
-  const version = " v1.0.0-stable ";
+  const version = ` v${pkg.version} `;
   const line = "─".repeat(Math.max(10, terminalWidth - (label.length + version.length + 4)));
   
   console.log(
@@ -98,5 +99,6 @@ export async function runwakeup(): Promise<void> {
   } else if (mode === "telegram") {
     console.log(`\n  ${THEME.accent("»")} ${THEME.primary("Synchronizing with Telegram Cloud...")}\n`);
     await runTelegramMode();
+    return;
   }
 }

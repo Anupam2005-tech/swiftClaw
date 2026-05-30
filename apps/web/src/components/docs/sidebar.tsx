@@ -30,6 +30,12 @@ import {
   Search,
   ArrowRight
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 // --- ANIMATION VARIANTS ---
 
@@ -54,16 +60,18 @@ const CORE_LINKS = [
   { label: "Introduction", href: "/docs/intro", icon: BookOpen, keywords: "getting started readme welcome overview" },
   { label: "Configuration", href: "/docs/config", icon: Settings2, keywords: "env setup keys options production development variables" },
   { label: "CLI Reference", href: "/docs/cli", icon: Terminal, keywords: "commands execute lines flags terminal script run" },
-  { label: "IDE Integration", href: "/docs/ide", icon: Code2, keywords: "vscode extensions plugins syntax code formatting editor" },
+  { label: "IDE & editors", href: "/docs/ide", icon: Code2, keywords: "vscode cursor terminal editor integrated" },
   { label: "Telegram Gateway", href: "/docs/telegram", icon: MessageCircle, keywords: "bot notification webhooks client channels streams messaging" },
   { label: "Agent Skills", href: "/docs/skills", icon: Cpu, badge: "ACTIVE", keywords: "crewai models tools intelligence multi-agent execution LLM" },
 ];
 
 const INSTALL_LINKS = [
-  { label: "CMD / One-Liner", href: "/docs/install/cmd", icon: TerminalSquare, keywords: "installation shell curl bash terminal direct setup fast" },
-  { label: "macOS Binary", href: "/docs/install/mac", icon: Command, keywords: "apple brew silicon intel installation manual package dmg" },
-  { label: "Windows Binary", href: "/docs/install/windows", icon: AppWindow, keywords: "microsoft powershell choco exe installation system structural" },
-  { label: "Debian / APT", href: "/docs/install/debian", icon: HardDrive, keywords: "linux ubuntu mint packages source list repository apt-get" },
+  { label: "CMD / One-Liner", href: "/docs/install/cmd", icon: TerminalSquare, keywords: "installation shell curl bash terminal direct setup fast mac linux" },
+  { label: "npm / pnpm / bun", href: "/docs/install/npm", icon: Blocks, keywords: "npm pnpm bun node package manager global install registry" },
+  { label: "Docker", href: "/docs/install/docker", icon: TerminalSquare, keywords: "container docker ghcr.io image pull containerized" },
+  { label: "macOS", href: "/docs/install/mac", icon: Command, keywords: "apple silicon intel arm64 binary manual" },
+  { label: "Windows", href: "/docs/install/windows", icon: AppWindow, keywords: "microsoft powershell exe installation" },
+  { label: "Linux", href: "/docs/install/debian", icon: HardDrive, keywords: "linux ubuntu debian fedora arch binary apt" },
 ];
 
 const FUTURE_LINKS = [
@@ -135,44 +143,62 @@ export function Sidebar() {
                   <Terminal strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-display text-xs font-black tracking-widest text-[#FFFDF9] uppercase">
+                  <span className="font-display  font-black tracking-widest text-[#FFFDF9] ">
                     swiftClaw
                   </span>
                 </div>
               </motion.div>
             </Link>
 
-            <button
-              onClick={() => {
-                setIsCollapsed(!isCollapsed);
-                if (!isCollapsed) setInstallOpen(false);
-              }}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#FFFDF9]/10 bg-[#FFFDF9]/5 text-[#FFFDF9]/40 transition-colors hover:border-[#FFFDF9]/30 hover:text-[#FFFDF9]"
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {isCollapsed ? <SidebarOpen className="h-3.5 w-3.5" /> : <SidebarClose className="h-3.5 w-3.5" />}
-            </button>
+            <TooltipProvider>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger className="cursor-help">
+                  <button
+                    onClick={() => {
+                      setIsCollapsed(!isCollapsed);
+                      if (!isCollapsed) setInstallOpen(false);
+                    }}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#FFFDF9]/10 bg-[#FFFDF9]/5 text-[#FFFDF9]/40 transition-colors hover:border-[#FFFDF9]/30 hover:text-[#FFFDF9]"
+                    aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  >
+                    {isCollapsed ? <SidebarOpen className="h-3.5 w-3.5" /> : <SidebarClose className="h-3.5 w-3.5" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={12} className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">
+                  {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* --- PREMIUM KINETIC SEARCH CONTROL TRIGGER --- */}
           <div className="px-3 pt-4 shrink-0">
-            <button
-              onClick={() => setSearchOpen(true)}
-              className={cn(
-                "flex items-center rounded-md border border-[#FFFDF9]/10 bg-[#FFFDF9]/[0.02] transition-all hover:bg-[#FFFDF9]/5 hover:border-[#FFFDF9]/20 text-left outline-none",
-                isCollapsed ? "h-8 w-8 justify-center" : "h-9 w-full px-2.5"
-              )}
-            >
-              <Search className="h-3.5 w-3.5 shrink-0 text-[#FFFDF9]/30" />
-              {!isCollapsed && (
-                <div className="flex flex-1 items-center justify-between ml-2.5 overflow-hidden">
-                  <span className="font-body text-xs text-[#FFFDF9]/30 font-medium truncate">Search platform docs...</span>
-                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-[#FFFDF9]/10 bg-[#000000] text-[#FFFDF9]/40 tracking-wider font-bold">
-                    ⌘K
-                  </span>
-                </div>
-              )}
-            </button>
+            <TooltipProvider>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger className="cursor-help">
+                  <button
+                    onClick={() => setSearchOpen(true)}
+                    className={cn(
+                      "flex items-center rounded-md border border-[#FFFDF9]/10 bg-[#FFFDF9]/[0.02] transition-all hover:bg-[#FFFDF9]/5 hover:border-[#FFFDF9]/20 text-left outline-none",
+                      isCollapsed ? "h-8 w-8 justify-center" : "h-9 w-full px-2.5"
+                    )}
+                  >
+                    <Search className="h-3.5 w-3.5 shrink-0 text-[#FFFDF9]/30" />
+                    {!isCollapsed && (
+                  <div className="flex flex-1 items-center justify-between ml-2.5 overflow-hidden">
+                    <span className="font-body text-xs text-[#FFFDF9]/30 font-medium truncate">Search platform docs...</span>
+                    <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-[#FFFDF9]/10 bg-[#000000] text-[#FFFDF9]/40 tracking-wider font-bold">
+                      ⌘K
+                    </span>
+                  </div>
+                )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={12} className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">
+                  Search (⌘K)
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* --- SCROLLABLE NAVIGATION --- */}
@@ -188,25 +214,54 @@ export function Sidebar() {
                 {CORE_LINKS.map((link) => {
                   const isActive = pathname === link.href;
                   return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={cn(
-                        "group flex h-9 w-full items-center gap-3 rounded-md transition-all duration-200",
-                        isCollapsed ? "justify-center px-0" : "px-2",
-                        isActive && !isCollapsed ? "bg-[#FFFDF9]/10 text-[#FFFDF9]" : "text-[#FFFDF9]/50 hover:bg-[#FFFDF9]/5 hover:text-[#FFFDF9]"
-                      )}
-                    >
-                      <link.icon className={cn("h-4 w-4 shrink-0 transition-colors", isActive && !isCollapsed ? "text-[#FFFDF9]" : "text-[#FFFDF9]/40 group-hover:text-[#FFFDF9]")} />
-                      <motion.div variants={textVariants} className="flex flex-1 items-center justify-between overflow-hidden whitespace-nowrap">
-                        <span className="truncate font-body text-xs font-medium">{link.label}</span>
-                        {link.badge && (
-                          <span className="ml-2 shrink-0 rounded-[4px] border border-[#FFFDF9]/20 bg-[#FFFDF9]/10 px-1.5 py-0.5 font-mono text-[8px] font-bold tracking-wider text-[#FFFDF9]">
-                            {link.badge}
-                          </span>
+                    <div key={link.href}>
+                    {isCollapsed ? (
+                      <TooltipProvider>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger className="block">
+                            <Link
+                              href={link.href}
+                              className={cn(
+                                "group flex h-9 w-full items-center gap-3 rounded-md transition-all duration-200",
+                                isCollapsed ? "justify-center px-0" : "px-2",
+                                isActive && !isCollapsed ? "bg-[#FFFDF9]/10 text-[#FFFDF9]" : "text-[#FFFDF9]/50 hover:bg-[#FFFDF9]/5 hover:text-[#FFFDF9]"
+                              )}
+                            >
+                              <link.icon className={cn("h-4 w-4 shrink-0 transition-colors", isActive && !isCollapsed ? "text-[#FFFDF9]" : "text-[#FFFDF9]/40 group-hover:text-[#FFFDF9]")} />
+                              <motion.div variants={textVariants} className="flex flex-1 items-center justify-between overflow-hidden whitespace-nowrap">
+                                <span className="truncate font-body text-xs font-medium">{link.label}</span>
+                                {link.badge && (
+                                  <span className="ml-2 shrink-0 rounded-[4px] border border-[#FFFDF9]/20 bg-[#FFFDF9]/10 px-1.5 py-0.5 font-mono text-[8px] font-bold tracking-wider text-[#FFFDF9]">
+                                    {link.badge}
+                                  </span>
+                                )}
+                              </motion.div>
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent sideOffset={12} className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">{link.label}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className={cn(
+                          "group flex h-9 w-full items-center gap-3 rounded-md transition-all duration-200",
+                          isCollapsed ? "justify-center px-0" : "px-2",
+                          isActive && !isCollapsed ? "bg-[#FFFDF9]/10 text-[#FFFDF9]" : "text-[#FFFDF9]/50 hover:bg-[#FFFDF9]/5 hover:text-[#FFFDF9]"
                         )}
-                      </motion.div>
-                    </Link>
+                      >
+                        <link.icon className={cn("h-4 w-4 shrink-0 transition-colors", isActive && !isCollapsed ? "text-[#FFFDF9]" : "text-[#FFFDF9]/40 group-hover:text-[#FFFDF9]")} />
+                        <motion.div variants={textVariants} className="flex flex-1 items-center justify-between overflow-hidden whitespace-nowrap">
+                          <span className="truncate font-body text-xs font-medium">{link.label}</span>
+                          {link.badge && (
+                            <span className="ml-2 shrink-0 rounded-[4px] border border-[#FFFDF9]/20 bg-[#FFFDF9]/10 px-1.5 py-0.5 font-mono text-[8px] font-bold tracking-wider text-[#FFFDF9]">
+                              {link.badge}
+                            </span>
+                          )}
+                        </motion.div>
+                      </Link>
+                    )}
+                    </div>
                   );
                 })}
               </div>
@@ -217,30 +272,54 @@ export function Sidebar() {
                   Deployment
                 </motion.div>
 
-                <button
-                  onClick={() => {
-                    if (!isCollapsed) setInstallOpen(!installOpen);
-                  }}
-                  className={cn(
-                    "group flex h-9 w-full items-center rounded-md transition-all duration-200 outline-none",
-                    isCollapsed ? "justify-center px-0 pointer-events-none" : "px-2",
-                    (installOpen || pathname?.includes("/install")) && !isCollapsed
-                      ? "bg-[#FFFDF9]/5 text-[#FFFDF9]"
-                      : "text-[#FFFDF9]/50 hover:bg-[#FFFDF9]/5 hover:text-[#FFFDF9]"
-                  )}
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <Download className="h-4 w-4 shrink-0 text-[#FFFDF9]/40 group-hover:text-[#FFFDF9]" />
-                      {!isCollapsed && (
-                        <span className="truncate font-body text-xs font-medium">Installation</span>
-                      )}
-                    </div>
-                    {!isCollapsed && (
-                      <ChevronDown className={cn("h-3 w-3 shrink-0 text-[#FFFDF9]/30 transition-transform duration-300 ml-2", installOpen && "rotate-180")} />
+                {isCollapsed ? (
+                  <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger className="block">
+                        <button
+                          onClick={() => {
+                            if (!isCollapsed) setInstallOpen(!installOpen);
+                          }}
+                          className={cn(
+                            "group flex h-9 w-full items-center rounded-md transition-all duration-200 outline-none",
+                            "justify-center px-0",
+                            (installOpen || pathname?.includes("/install")) && !isCollapsed
+                              ? "bg-[#FFFDF9]/5 text-[#FFFDF9]"
+                              : "text-[#FFFDF9]/50 hover:bg-[#FFFDF9]/5 hover:text-[#FFFDF9]"
+                          )}
+                        >
+                          <div className="flex w-full items-center justify-between">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <Download className="h-4 w-4 shrink-0 text-[#FFFDF9]/40 group-hover:text-[#FFFDF9]" />
+                            </div>
+                          </div>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent sideOffset={12} className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">Installation</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (!isCollapsed) setInstallOpen(!installOpen);
+                    }}
+                    className={cn(
+                      "group flex h-9 w-full items-center rounded-md transition-all duration-200 outline-none",
+                      isCollapsed ? "justify-center px-0 pointer-events-none" : "px-2",
+                      (installOpen || pathname?.includes("/install")) && !isCollapsed
+                        ? "bg-[#FFFDF9]/5 text-[#FFFDF9]"
+                        : "text-[#FFFDF9]/50 hover:bg-[#FFFDF9]/5 hover:text-[#FFFDF9]"
                     )}
-                  </div>
-                </button>
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <Download className="h-4 w-4 shrink-0 text-[#FFFDF9]/40 group-hover:text-[#FFFDF9]" />
+                        <span className="truncate font-body text-xs font-medium">Installation</span>
+                      </div>
+                      <ChevronDown className={cn("h-3 w-3 shrink-0 text-[#FFFDF9]/30 transition-transform duration-300 ml-2", installOpen && "rotate-180")} />
+                    </div>
+                  </button>
+                )}
 
                 <AnimatePresence initial={false}>
                   {installOpen && !isCollapsed && (
@@ -274,7 +353,7 @@ export function Sidebar() {
                 <div className="mb-2 px-2 min-h-[14px]">
                   {isCollapsed ? (
                     <div className="flex w-full justify-center text-[#FFFDF9]/30">
-                      <Lock className="h-2.5 w-2.5 shrink-0" />
+                    
                     </div>
                   ) : (
                     <div className="flex w-full items-center justify-between font-mono text-[9px] font-bold uppercase tracking-[0.25em] text-[#FFFDF9]/30">
@@ -284,20 +363,44 @@ export function Sidebar() {
                   )}
                 </div>
                 
-                {FUTURE_LINKS.map((link) => (
-                  <div
-                    key={link.label}
-                    className={cn(
-                      "group flex h-9 w-full items-center gap-3 rounded-md cursor-not-allowed text-left opacity-30 grayscale",
-                      isCollapsed ? "justify-center px-0" : "px-2"
+                {FUTURE_LINKS.map((link) => {
+                  return (
+                    <div key={link.label}>
+                    {isCollapsed ? (
+                      <TooltipProvider>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger className="block">
+                            <div
+                              className={cn(
+                                "group flex h-9 w-full items-center gap-3 rounded-md cursor-not-allowed text-left opacity-30 grayscale",
+                                isCollapsed ? "justify-center px-0" : "px-2"
+                              )}
+                            >
+                              <link.icon className="h-4 w-4 shrink-0 text-[#FFFDF9]" />
+                              <motion.div variants={textVariants} className="flex flex-1 items-center justify-between overflow-hidden whitespace-nowrap">
+                                <span className="truncate font-body text-xs line-through decoration-[#FFFDF9]/30">{link.label}</span>
+                              </motion.div>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent sideOffset={12} className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">{link.label} (Coming Soon)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <div
+                        className={cn(
+                          "group flex h-9 w-full items-center gap-3 rounded-md cursor-not-allowed text-left opacity-30 grayscale",
+                          isCollapsed ? "justify-center px-0" : "px-2"
+                        )}
+                      >
+                        <link.icon className="h-4 w-4 shrink-0 text-[#FFFDF9]" />
+                        <motion.div variants={textVariants} className="flex flex-1 items-center justify-between overflow-hidden whitespace-nowrap">
+                          <span className="truncate font-body text-xs line-through decoration-[#FFFDF9]/30">{link.label}</span>
+                        </motion.div>
+                      </div>
                     )}
-                  >
-                    <link.icon className="h-4 w-4 shrink-0 text-[#FFFDF9]" />
-                    <motion.div variants={textVariants} className="flex flex-1 items-center justify-between overflow-hidden whitespace-nowrap">
-                      <span className="truncate font-body text-xs line-through decoration-[#FFFDF9]/30">{link.label}</span>
-                    </motion.div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
 
             </div>
@@ -305,18 +408,40 @@ export function Sidebar() {
 
           {/* --- SYSTEM CONSOLE FOOTER --- */}
           <div className="w-full shrink-0 border-t border-[#FFFDF9]/10 bg-[#000000] p-3">
-            <div className={cn(
-              "flex h-10 w-full items-center gap-3 rounded-lg border border-[#FFFDF9]/10 bg-[#FFFDF9]/[0.02] px-2.5 transition-all duration-300",
-              isCollapsed && "justify-center border-transparent bg-transparent px-0"
-            )}>
-              <div className="relative flex h-2 w-2 shrink-0 items-center justify-center">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00E6C3] opacity-50" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#00E6C3]" />
+            {isCollapsed ? (
+              <TooltipProvider>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger className="block">
+                    <div className={cn(
+                      "flex h-10 w-full items-center gap-3 rounded-lg border border-[#FFFDF9]/10 bg-[#FFFDF9]/[0.02] px-2.5 transition-all duration-300",
+                      isCollapsed && "justify-center border-transparent bg-transparent px-0"
+                    )}>
+                      <div className="relative flex h-2 w-2 shrink-0 items-center justify-center">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00E6C3] opacity-50" />
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#00E6C3]" />
+                      </div>
+                      <motion.div variants={textVariants} className="flex flex-col overflow-hidden whitespace-nowrap">
+                        <span className="truncate font-mono text-[10px] font-bold text-muted-foreground/80">version: 1.0.1</span>
+                      </motion.div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={12} className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">System online — v1.0.1</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <div className={cn(
+                "flex h-10 w-full items-center gap-3 rounded-lg border border-[#FFFDF9]/10 bg-[#FFFDF9]/[0.02] px-2.5 transition-all duration-300",
+                isCollapsed && "justify-center border-transparent bg-transparent px-0"
+              )}>
+                <div className="relative flex h-2 w-2 shrink-0 items-center justify-center">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00E6C3] opacity-50" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#00E6C3]" />
+                </div>
+                <motion.div variants={textVariants} className="flex flex-col overflow-hidden whitespace-nowrap">
+                  <span className="truncate font-mono text-[10px] font-bold text-muted-foreground/80">version: 1.0.1</span>
+                </motion.div>
               </div>
-              <motion.div variants={textVariants} className="flex flex-col overflow-hidden whitespace-nowrap">
-                <span className="truncate font-mono text-[10px] font-bold text-muted-foreground/80">version: 1.0.0</span>
-              </motion.div>
-            </div>
+            )}
           </div>
 
         </div>

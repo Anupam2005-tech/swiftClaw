@@ -2,7 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Terminal, Star } from 'lucide-react';
+import { Terminal, Star, ChevronRight, Play } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 interface ResponsiveHeroBannerProps {
     backgroundImageUrl?: string;
@@ -21,42 +27,56 @@ interface ResponsiveHeroBannerProps {
 }
 
 const ResponsiveHeroBanner: React.FC<ResponsiveHeroBannerProps> = ({
-    backgroundImageUrl = "https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0e2dbea0-c0a9-413f-a57b-af279633c0df_3840w.jpg",
+    backgroundImageUrl = "/BG.avif",
     ctaButtonText = "Star Us",
     ctaButtonHref = "https://github.com",
-    badgeLabel = "Live",
-    badgeText = "swiftClaw v1.0.0 is Released",
-    title = "Code Like a God.",
-    titleLine2 = "Supervise Like a Boss.",
-    description = "The autonomous terminal agent that never overwrites your directories behind your back. Fully sandboxed, entirely zero-trust, and delightfully sassy.",
-    primaryButtonText = "View on GitHub",
-    primaryButtonHref = "https://github.com",
+    badgeLabel = "v1.0.0 Live",
+    badgeText = "swiftClaw",
+    title = "Orchestrate Complexity.",
+    titleLine2 = "Scale with Confidence.",
+    description = "The  autonomous agent alternative to OpenClaw for  intelligent architectural planning,Asking, Implementing & Security.",
+    primaryButtonText = "GitHub Repository",
+    primaryButtonHref = "https://github.com/Anupam2005-tech/swiftClaw",
     secondaryButtonText = "Read the Docs",
     secondaryButtonHref = "/docs",
-    partnersTitle = "BUILT FOR THE 10X ENGINEER. TOLERATED BY DEVOPS.",
+    partnersTitle = "BUILDING ENTERPRISE ENGINEERING SOLUTIONS.",
 }) => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     return (
-        <section className="w-full isolate min-h-screen overflow-hidden relative">
-            {/* Inline style for the marquee animation to ensure it works without Tailwind config changes */}
+        <TooltipProvider>
+        <section className="w-full isolate min-h-screen overflow-hidden relative bg-black font-sans selection:bg-white/20">
+            {/* Custom Animations & Gradients */}
             <style>{`
                 @keyframes marquee {
                     0% { transform: translateX(0%); }
                     100% { transform: translateX(-50%); }
                 }
                 .animate-marquee {
-                    animation: marquee 20s linear infinite;
+                    animation: marquee 25s linear infinite;
+                }
+                .text-gradient {
+                    background: linear-gradient(to right bottom, #ffffff 30%, rgba(255, 255, 255, 0.4));
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
                 }
             `}</style>
 
-            <img
-                src={backgroundImageUrl}
-                alt=""
-                className="w-full h-full object-cover absolute top-0 right-0 bottom-0 left-0"
-            />
-            <div className="pointer-events-none absolute inset-0 ring-1 ring-black/30" />
+            {/* Background Image with Lighter Masking */}
+            <div className="absolute inset-0 z-0">
+                <img
+                    src={backgroundImageUrl}
+                    alt="Background"
+                    className="w-full h-full object-cover object-center"
+                />
+                {/* Lighter radial gradient just to frame the edges gently for text readability */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_10%,_rgba(0,0,0,0.7)_100%)]" />
+                {/* Very subtle dark overlay */}
+                <div className="absolute inset-0 bg-black/20" />
+            </div>
 
+            {/* EXACT ORIGINAL NAVBAR (Untouched) */}
             <header className="z-10 xl:top-4 relative">
                 <div className="mx-6">
                     <div className="flex items-center justify-between pt-4">
@@ -93,85 +113,92 @@ const ResponsiveHeroBanner: React.FC<ResponsiveHeroBannerProps> = ({
                             </div>
                         </nav>
 
-                        <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur"
-                            aria-expanded={mobileMenuOpen}
-                            aria-label="Toggle menu"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-white/90">
-                                <path d="M4 5h16" />
-                                <path d="M4 12h16" />
-                                <path d="M4 19h16" />
-                            </svg>
-                        </button>
+                        <Tooltip delayDuration={0}>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                    className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur"
+                                    aria-expanded={mobileMenuOpen}
+                                    aria-label="Toggle menu"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-white/90">
+                                        <path d="M4 5h16" />
+                                        <path d="M4 12h16" />
+                                        <path d="M4 19h16" />
+                                    </svg>
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">
+                                {mobileMenuOpen ? "Close menu" : "Open menu"}
+                            </TooltipContent>
+                        </Tooltip>
                     </div>
                 </div>
             </header>
 
-            <div className="z-10 relative">
-                <div className="sm:pt-28 md:pt-32 lg:pt-40 max-w-7xl mx-auto pt-28 px-6 pb-16">
-                    <div className="mx-auto max-w-3xl text-center">
-                        <div className="mb-6 inline-flex items-center gap-3 rounded-full bg-white/10 px-2.5 py-2 ring-1 ring-white/15 backdrop-blur animate-fade-slide-in-1">
-                            <span className="inline-flex items-center text-xs font-medium text-neutral-900 bg-white/90 rounded-full py-0.5 px-2 font-sans">
+            {/* Main Hero Content (Premium & Sassy) */}
+            <div className="z-10 relative flex flex-col justify-center min-h-[calc(100vh-6rem)]">
+                <div className="max-w-7xl mx-auto px-6 py-20 w-full">
+                    <div className="mx-auto max-w-4xl text-center flex flex-col items-center">
+                        
+                        {/* Premium Sassy Badge */}
+                        <div className="mb-8 inline-flex items-center gap-3 rounded-full bg-white/10 border border-white/15 pr-4 pl-1 py-1 backdrop-blur-md shadow-2xl">
+                            <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wider text-neutral-900 bg-white rounded-full py-1 px-3">
                                 {badgeLabel}
                             </span>
-                            <span className="text-sm font-medium text-white/90 font-sans">
+                            <span className="text-sm font-medium text-neutral-200">
                                 {badgeText}
                             </span>
                         </div>
 
-                        <h1 className="sm:text-5xl md:text-6xl lg:text-7xl leading-tight text-4xl text-white tracking-tight font-instrument-serif font-normal animate-fade-slide-in-2">
+                        {/* Title with Linear-style text gradient */}
+                        <h1 className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tighter text-transparent text-gradient mb-6 leading-[1.1]">
                             {title}
                             <br className="hidden sm:block" />
                             {titleLine2}
                         </h1>
 
-                        <p className="sm:text-lg animate-fade-slide-in-3 text-base text-white/80 max-w-2xl mt-6 mx-auto">
+                        <p className="text-lg md:text-xl text-neutral-300 max-w-2xl mx-auto font-light leading-relaxed mb-10">
                             {description}
                         </p>
 
-                        <div className="flex flex-col sm:flex-row sm:gap-4 mt-10 gap-3 items-center justify-center animate-fade-slide-in-4">
+                        {/* Premium Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center w-full sm:w-auto">
                             <a
                                 href={primaryButtonHref}
-                                className="inline-flex items-center gap-2 hover:bg-white/15 text-sm font-medium text-white bg-white/10 ring-white/15 ring-1 rounded-full py-3 px-5 font-sans transition-colors"
+                                className="group relative inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-semibold text-black transition-all hover:bg-neutral-200 w-full sm:w-auto overflow-hidden"
                             >
                                 {primaryButtonText}
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                    <path d="M5 12h14" />
-                                    <path d="m12 5 7 7-7 7" />
-                                </svg>
+                                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                             </a>
                             <a
                                 href={secondaryButtonHref}
-                                className="inline-flex items-center gap-2 rounded-full bg-transparent px-5 py-3 text-sm font-medium text-white/90 hover:text-white font-sans transition-colors"
+                                className="group inline-flex items-center justify-center gap-2 rounded-full bg-white/10 border border-white/20 px-8 py-4 text-sm font-medium text-white transition-all hover:bg-white/20 w-full sm:w-auto backdrop-blur-sm"
                             >
+                                <Play className="h-4 w-4 text-neutral-300 group-hover:text-white transition-colors" fill="currentColor" />
                                 {secondaryButtonText}
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                                    <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
-                                </svg>
                             </a>
                         </div>
                     </div>
 
-                    <div className="mx-auto mt-24 max-w-5xl overflow-hidden">
-                        <p className="animate-fade-slide-in-1 text-xs font-bold uppercase tracking-widest text-white/50 text-center mb-8 font-sans">
+                    {/* Premium Marquee */}
+                    <div className="mx-auto mt-32 max-w-5xl">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/50 text-center mb-10">
                             {partnersTitle}
                         </p>
                         
-                        {/* Premium Marquee Replacement */}
-                        <div className="relative flex w-full overflow-hidden animate-fade-slide-in-2 mask-image-linear">
-                            {/* Mask gradient for smooth fade on edges */}
-                            <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-black/50 to-transparent z-10" />
-                            <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-black/50 to-transparent z-10" />
+                        <div className="relative flex w-full overflow-hidden">
+                            {/* Seamless fade edges */}
+                            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black/80 to-transparent z-10" />
+                            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black/80 to-transparent z-10" />
                             
                             <div className="animate-marquee flex whitespace-nowrap items-center w-[200%]">
                                  {[...Array(4)].map((_, i) => (
                                      <div key={i} className="flex items-center justify-around w-1/2">
-                                         <span className="text-xl md:text-2xl font-bold text-white/20 uppercase tracking-[0.2em] font-sans">Zero-Trust</span>
-                                         <span className="text-xl md:text-2xl font-bold text-white/20 uppercase tracking-[0.2em] font-sans">Sandboxed</span>
-                                         <span className="text-xl md:text-2xl font-bold text-white/20 uppercase tracking-[0.2em] font-sans">Autonomous</span>
-                                         <span className="text-xl md:text-2xl font-bold text-white/20 uppercase tracking-[0.2em] font-sans">Local-First</span>
+                                         <span className="text-xl md:text-2xl font-bold text-white/30 uppercase tracking-[0.15em]">Zero-Trust</span>
+                                         <span className="text-xl md:text-2xl font-bold text-white/30 uppercase tracking-[0.15em]">Sandboxed</span>
+                                         <span className="text-xl md:text-2xl font-bold text-white/30 uppercase tracking-[0.15em]">Autonomous</span>
+                                         <span className="text-xl md:text-2xl font-bold text-white/30 uppercase tracking-[0.15em]">Local-First</span>
                                      </div>
                                  ))}
                             </div>
@@ -180,6 +207,7 @@ const ResponsiveHeroBanner: React.FC<ResponsiveHeroBannerProps> = ({
                 </div>
             </div>
         </section>
+        </TooltipProvider>
     );
 };
 

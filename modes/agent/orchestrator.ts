@@ -9,14 +9,16 @@ import { stepCountIs, ToolLoopAgent } from "ai";
 import { getAgentMode } from "../../ai";
 import { renderTerminalMarkdown } from "../../tui/termina-md";
 import { runApprovalFlow } from "./approvals";
+import { THEME } from "../../tui/wakeup";
 import { getAgentSystemPrompt } from "../prompts";
+import { formatAiError } from "../../utils/config.ts";
 
 export async function runAgentmode() {
-  console.log(chalk.bold("\n Agent Mode\n"));
+  console.log(`\n  ${THEME.accent("»")} ${THEME.primary("Agent Mode Initialized")}\n`);
 
   const goal = await text({
-    message: "What would you like the agent to do?",
-    placeholder: "Concrete task from codebase",
+    message: THEME.primary("Define the agent's objective:"),
+    placeholder: "e.g., Implement authentication workflow",
   });
   if (isCancel(goal) || !goal.trim()) return;
 
@@ -33,28 +35,28 @@ export async function runAgentmode() {
     tools,
   });
 
-  uiTracker.start("Agent is thinking...");
+  uiTracker.start("Agent synthesizing...");
 
   try {
     const result = await agent.generate({
       prompt: goal?.trim(),
       onStepFinish: ({ toolCalls }) => {
         if (toolCalls.length > 0) {
-          uiTracker.stop("Executed tools.");
+          uiTracker.stop("Orchestration complete.");
           for (const toolCall of toolCalls) {
             const preview = JSON.stringify(toolCall.input).slice(0, 200);
             log.step(
-              `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+              `${THEME.accent("✓")} ${THEME.primary(String(toolCall.toolName))} ${THEME.secondary(preview + (preview.length >= 200 ? "..." : ""))}`
             );
           }
-          uiTracker.start("Refining response...");
+          uiTracker.start("Refining output...");
         } else {
-          uiTracker.update("Refining response...");
+          uiTracker.update("Refining output...");
         }
       },
     });
 
-    uiTracker.stop("Finished thinking.");
+    uiTracker.stop("Synthesis complete.");
     if (result.text?.trim()) console.log(renderTerminalMarkdown(result.text));
 
     const ok = await runApprovalFlow(internalTracker);
@@ -62,19 +64,16 @@ export async function runAgentmode() {
 
     const errors = executor.applyApprovedFromTracker();
     if (errors.length) {
-      console.log(chalk.red("\n Some operations reported errors...\n"));
+      console.log(THEME.error("\n Some operations reported errors...\n"));
       for (const e of errors) {
-        console.log(chalk.red(` ${e}`));
+        console.log(THEME.error(` ${e}`));
       }
     } else {
-      console.log(chalk.green("\nApplied successfully\n"));
+      console.log(THEME.accent("\n  Modifications applied successfully.\n"));
     }
     executor.clearStaging();
-  } catch (error: any) {
-    uiTracker.stop("Failed to generate response.");
-    log.error(chalk.red(`AI generation failed: ${error.message || error}`));
-    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
-       log.warn(chalk.yellow("Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment."));
-    }
+  } catch (error: unknown) {
+    uiTracker.stop("Engine fault: Generation failed.");
+    log.error(THEME.error(`AI generation failed: ${formatAiError(error)}`));
   }
 }

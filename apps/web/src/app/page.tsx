@@ -1,39 +1,44 @@
+import { ScrollReveal } from "@/components/landing/scroll-reveal";
 import { WhatIsSection } from "@/components/landing/what-is-section";
 import { CapabilitiesSection } from "@/components/landing/capabilities-section";
 import { RoadmapSection } from "@/components/landing/roadmap-section";
 import { FaqSection } from "@/components/landing/faq-section";
-import { InstallSection } from "@/components/landing/install-section";
+import { CtaSection } from "@/components/landing/cta";
 import ResponsiveHeroBanner from "@/components/ui/responsive-hero-banner";
 import { Footer } from "@/components/ui/footer-section";
-
-function SectionDivider() {
-  return (
-    <div className="relative py-10 hidden md:block">
-      <div className="mx-auto h-px w-3/4 bg-sc-text/10" />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-sc-text-muted/30 select-none pointer-events-none">
-          // SYSTEM_INDEX_MARKER_0X //
-        </span>
-      </div>
-    </div>
-  );
-}
+import { WavePath } from "@/components/ui/wave-path";
+import { LoadingWrapper } from "@/components/landing/loading-wrapper";
 
 export default function Home() {
   return (
-    <>
+    <LoadingWrapper>
       <ResponsiveHeroBanner />
 
-      <WhatIsSection />
+      <ScrollReveal variant="fadeUp">
+        <WhatIsSection />
+      </ScrollReveal>
 
-      <CapabilitiesSection />
+      <ScrollReveal variant="slideUp" delay={0.1}>
+        <CapabilitiesSection />
+      </ScrollReveal>
 
-      <RoadmapSection />
+      <ScrollReveal variant="fadeUp" delay={0.05}>
+        <RoadmapSection />
+      </ScrollReveal>
 
-      <FaqSection />
+      <ScrollReveal variant="fadeUp" delay={0.05}>
+        <FaqSection />
+      </ScrollReveal>
 
-      <InstallSection />
-      <Footer />
-    </>
+      <ScrollReveal variant="scaleIn" delay={0.1}>
+        <CtaSection />
+      </ScrollReveal>
+
+      <WavePath/>
+
+      <ScrollReveal variant="fadeIn" delay={0.05}>
+        <Footer />
+      </ScrollReveal>
+    </LoadingWrapper>
   );
 }

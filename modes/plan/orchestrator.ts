@@ -14,6 +14,7 @@ import { printPlan, selectSteps } from "./printPlan";
 import type { PlanStep } from "./types.ts";
 import { createWebTools } from "./web-tools";
 import { getPlanStepExecutionPrompt } from "../prompts";
+import { THEME } from "../../tui/wakeup";
 
 
 function stepPrompt(goal: string, step: PlanStep): string {
@@ -21,10 +22,10 @@ function stepPrompt(goal: string, step: PlanStep): string {
 }
 
 export async function runPlanMode(): Promise<void> {
-  console.log(chalk.bold(" \n Plan Mode \n"));
+  console.log(`\n  ${THEME.accent("»")} ${THEME.primary("Plan Mode Initialized")}\n`);
 
   const goal = await text({
-    message: "What would you like to build today?",
+    message: THEME.primary("Define your architectural objective:"),
   });
   if (isCancel(goal) || !goal.trim()) return;
 
@@ -35,7 +36,7 @@ export async function runPlanMode(): Promise<void> {
   const selected = await selectSteps(plan);
   if (selected.length === 0) return;
   const proceed = await confirm({
-    message: `Execute ${selected.length} step(s)`,
+    message: THEME.primary(`Initialize execution for ${selected.length} step(s)?`),
     initialValue: true,
   });
   if (isCancel(proceed) || !proceed) return;
@@ -52,8 +53,8 @@ export async function runPlanMode(): Promise<void> {
   };
 
   for (const step of selected) {
-    console.log(chalk.bold(`\nExecuting Step: ${step.title}\n`));
-    uiTracker.start("Agent is thinking...");
+    console.log(`\n  ${THEME.accent("»")} ${THEME.primary(`Executing Phase: ${step.title}`)}\n`);
+    uiTracker.start("Agent synthesizing...");
     const agent = new ToolLoopAgent({
       model: getAgentModel(),
       stopWhen: stepCountIs(30),
@@ -73,13 +74,13 @@ export async function runPlanMode(): Promise<void> {
           if (!toolCall) continue;
           const preview = JSON.stringify(toolCall.input).slice(0, 200);
           log.step(
-            `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+            `${THEME.accent("✓")} ${THEME.primary(String(toolCall.toolName))} ${THEME.secondary(preview + (preview.length >= 200 ? "..." : ""))}`
           );
         }
-        uiTracker.update("Refining response...");
+        uiTracker.update("Refining output...");
       },
     });
-    uiTracker.stop("Finished thinking.");
+    uiTracker.stop("Synthesis complete.");
     if (result.text?.trim()) {
       console.log(renderTerminalMarkdown(result.text));
     }
@@ -90,12 +91,12 @@ export async function runPlanMode(): Promise<void> {
 
   const errors = executor.applyApprovedFromTracker();
   if (errors.length) {
-    console.log(chalk.red("\n Some operations reported errors...\n"));
+    console.log(THEME.error("\n Some operations reported errors...\n"));
     for (const e of errors) {
-      console.log(chalk.red(` ${e}`));
+      console.log(THEME.error(` ${e}`));
     }
   } else {
-    console.log(chalk.green("\nApplied successfully\n"));
+    console.log(THEME.accent("\n  Modifications applied successfully.\n"));
   }
   executor.clearStaging();
 }

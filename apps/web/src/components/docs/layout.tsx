@@ -1,12 +1,34 @@
 "use client";
 
 import React from "react";
-// Adjust this import path if your Sidebar component sits somewhere else 
-// (e.g., "@/components/ui/sidebar" or "@/components/landing/sidebar")
-import {Sidebar}  from "../ui/sidebar";
+
+import {Sidebar}  from "./sidebar";
+import { motion } from "framer-motion";
 interface DocsLayoutProps {
   children: React.ReactNode;
 }
+
+const PixelHeart = () => (
+  <motion.svg
+    animate={{ scale: [1, 1.3, 1] }}
+    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+    viewBox="0 0 11 11"
+    className="w-3 h-3 mx-1.5 inline-block fill-accent drop-shadow-[0_0_8px_rgba(var(--accent),0.6)]"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="2" y="1" width="2" height="1" />
+    <rect x="7" y="1" width="2" height="1" />
+    <rect x="1" y="2" width="2" height="1" />
+    <rect x="4" y="2" width="3" height="1" />
+    <rect x="8" y="2" width="2" height="1" />
+    <rect x="0" y="3" width="11" height="3" />
+    <rect x="1" y="6" width="9" height="1" />
+    <rect x="2" y="7" width="7" height="1" />
+    <rect x="3" y="8" width="5" height="1" />
+    <rect x="4" y="9" width="3" height="1" />
+    <rect x="5" y="10" width="1" height="1" />
+  </motion.svg>
+);
 
 export default function DocsLayout({ children }: DocsLayoutProps) {
   return (
@@ -14,7 +36,7 @@ export default function DocsLayout({ children }: DocsLayoutProps) {
       
       {/* --- PRE-FLIGHT CANVAS DECORATIONS --- */}
        {/* Global Architectural Blueprint Background Grid */}
-       <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] pointer-events-none select-none" />
+        <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:8rem_8rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] pointer-events-none select-none" />
 
       {/* Subtle top horizontal engine path line */}
       <div className="absolute top-0 right-0 left-14 h-px bg-gradient-to-r from-[#FFFDF9]/15 via-[#FFFDF9]/5 to-transparent pointer-events-none z-10" />
@@ -45,6 +67,10 @@ export default function DocsLayout({ children }: DocsLayoutProps) {
             <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#FFFDF9]/30 text-center sm:text-right">
               © {new Date().getFullYear()} swiftClaw. All rights reserved.
             </p>
+            
+            <div className="font-body text-xs md:text-sm font-light text-[#FFFDF9]/50 tracking-wide flex items-center">
+    Made with <PixelHeart /> by anupam.
+  </div>
           </footer>
 
         </main>

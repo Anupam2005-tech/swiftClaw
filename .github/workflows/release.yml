@@ -1,36 +1,136 @@
-name: Release Binaries
+name: Release
 
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
 jobs:
-  release:
+  # ── Sync version from tag ───────────────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+  # ── Publish to npm ──────────────────────────────────────────────────
+  npm-publish:
+    needs: version
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: |
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version
+          bun run build
+      - run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
+  # ── Build standalone binaries ───────────────────────────────────────
+  binaries:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: |
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version
+          bun run scripts/compile.ts
+      - name: Upload binaries as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: dist/bin/
 
-      - name: Compile Binaries
-        run: bun run scripts/compile.ts
-
-      - name: Create Release and Upload Binaries
+  # ── GitHub Release ──────────────────────────────────────────────────
+  release:
+    needs: [version, binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: dist/bin/
+      - name: Read checksums
+        id: checksums
+        run: |
+          echo "sha256<<EOF" >> "$GITHUB_OUTPUT"
+          cat dist/bin/SHA256SUMS.txt >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/bin/swiftclaw-macos-arm64
-            dist/bin/swiftclaw-macos-x64
-            dist/bin/swiftclaw-linux-arm64
-            dist/bin/swiftclaw-linux-x64
-            dist/bin/swiftclaw-windows-x64.exe
+          name: swiftClaw v${{ needs.version.outputs.version }}
+          body: |
+            ## swiftClaw v${{ needs.version.outputs.version }}
+
+            ### Standalone Binaries
+            Download the binary for your platform below.
+
+            | OS | Architecture | Binary |
+            |----|-------------|--------|
+            | macOS | Apple Silicon | `swiftclaw-macos-arm64` |
+            | macOS | Intel | `swiftclaw-macos-x64` |
+            | Linux | ARM64 | `swiftclaw-linux-arm64` |
+            | Linux | x64 | `swiftclaw-linux-x64` |
+            | Windows | x64 | `swiftclaw-windows-x64.exe` |
+
+            ### SHA256 Checksums
+            ```
+            ${{ steps.checksums.outputs.sha256 }}
+            ```
+
+            ### Docker
+            ```sh
+            docker pull ghcr.io/${{ github.repository }}:v${{ needs.version.outputs.version }}
+            ```
+
+            ### npm
+            ```sh
+            npm install -g swiftclaw
+            ```
+          files: dist/bin/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Docker image ────────────────────────────────────────────────────
+  docker:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:v${{ needs.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+          labels: |
+            org.opencontainers.image.version=${{ needs.version.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}

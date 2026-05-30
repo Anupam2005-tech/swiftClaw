@@ -1,8 +1,9 @@
 import chalk from "chalk";
-import { select,isCancel } from "@clack/prompts";
+import { select, isCancel } from "@clack/prompts";
 import { runAgentmode } from "./agent/orchestrator";
 import { runAskMode } from "./ask/orchestrator";
 import { runPlanMode } from "./plan/orchestrator";
+import { ensureOpenRouterKey } from "../utils/config.ts";
 
 export async function runCliMode() {
     while (true){
@@ -17,6 +18,9 @@ export async function runCliMode() {
             ]
         })
         if (isCancel(mode) || mode === "back") return;
+        if (mode === "agent" || mode === "plan" || mode === "ask") {
+          if (!(await ensureOpenRouterKey())) continue;
+        }
         if(mode==="agent"){await runAgentmode() }
         else if(mode==="plan"){await runPlanMode()}
         else if(mode==="ask"){await runAskMode()}

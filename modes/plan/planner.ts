@@ -10,6 +10,7 @@ import {
 import { z } from "zod";
 import chalk from "chalk";
 import { getAgentModel } from "../../ai/ai.config.ts";
+import { formatAiError } from "../../utils/config.ts";
 import { ActionTracker } from "../agent/action-tracker.ts";
 import { ToolExecutor } from "../agent/tool-executor.ts";
 import { defaultAgentConfig } from "../agent/types.ts";
@@ -190,13 +191,10 @@ export async function generatePlan(goal: string) {
       complexity: s.complexity,
     }));
     return { goal, researchSummary: validated.researchSummary, steps };
-  } catch (error: any) {
+  } catch (error: unknown) {
     uiTracker.stop("Failed to generate plan.");
     const { log } = require("@clack/prompts");
-    log.error(chalk.red(`AI generation failed: ${error.message || error}`));
-    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
-       log.warn(chalk.yellow("Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment."));
-    }
-    return null; // Return null on failure so the caller can handle it
+    log.error(chalk.red(`AI generation failed: ${formatAiError(error)}`));
+    return null;
   }
 }

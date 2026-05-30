@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   motion,
   type HTMLMotionProps,
@@ -104,7 +105,9 @@ export function ScrollReveal({
   );
 }
 
-type ScrollSectionProps = HTMLMotionProps<"section">;
+type ScrollSectionProps = Omit<HTMLMotionProps<"section">, "children"> & {
+  children?: ReactNode;
+};
 
 export function ScrollSection({ children, className, ...props }: ScrollSectionProps) {
   return (
@@ -113,12 +116,12 @@ export function ScrollSection({ children, className, ...props }: ScrollSectionPr
       whileInView="visible"
       viewport={scrollViewport}
       variants={staggerContainer}
-      className={`relative ${className ?? ""}`}
+      className={`scroll-target relative ${className ?? ""}`}
       {...props}
     >
-      <div className="pointer-events-none hidden md:block absolute left-1/2 top-6 -translate-x-1/2 text-[9px] uppercase tracking-[0.25em] text-[#FFFDF9]/30 font-mono select-none">
-        // SYSTEM_INDEX_MARKER_0X //
-      </div>
+       <div className="pointer-events-none hidden md:block absolute left-1/2 top-6 -translate-x-1/2 text-[9px] uppercase tracking-[0.25em] text-[#FFFDF9]/30 font-mono select-none">
+         {"// SYSTEM_INDEX_MARKER_0X //"}
+       </div>
       {children}
     </motion.section>
   );

@@ -2,10 +2,20 @@ import { Telegraf } from "telegraf";
 import chalk from "chalk";
 import { WELCOME } from "./constants";
 import { registerHandler } from "./handlers";
+import { ensureOpenRouterKey, ENV_PATH } from "../../utils/config.ts";
 
 export async function runTelegramMode() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const ownerId = process.env.TELEGRAM_OWNER_ID;
+  if (!(await ensureOpenRouterKey())) return;
+
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const ownerId = process.env.TELEGRAM_OWNER_ID?.trim();
+
+  if (!token || !ownerId) {
+    console.log(chalk.red("\n  ✖ Telegram is not configured."));
+    console.log(chalk.gray(`  Set TELEGRAM_BOT_TOKEN and TELEGRAM_OWNER_ID in ${ENV_PATH}`));
+    console.log(chalk.gray("  Or run swiftclaw and choose optional keys in setup.\n"));
+    return;
+  }
 
   const bot = new Telegraf(token!);
 

@@ -1,110 +1,63 @@
-# 🦅 swiftClaw
+# swiftClaw
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#)
-[![Bun](https://img.shields.io/badge/runtime-bun%20%2F%20node-orange.svg)](#)
 
-**swiftClaw** is an advanced AI agent and terminal companion tool built to execute filesystem mutations, guide developers, run interactive terminal sessions, and deploy excellence directly from your CLI or Telegram.
+**swiftClaw** is an AI agent and terminal companion tool — CLI agent, Telegram bot, and developer copilot in one binary.
 
-```
-    ███████╗██╗    ██╗██╗███████╗████████╗ ██████╗██╗      █████╗ ██╗    ██╗
-    ██╔════╝██║    ██║██║██╔════╝╚══██╔══╝██╔════╝██║     ██╔══██╗██║    ██║
-    ███████╗██║ █╗ ██║██║█████╗     ██║   ██║     ██║     ███████║██║ █╗ ██║
-    ╚════██║██║███╗██║██║██╔══╝     ██║   ██║     ██║     ██╔══██║██║███╗██║
-    ███████║╚███╔███╔╝██║██║        ██║   ╚██████╗███████╗██║  ██║╚███╔███╔╝
-    ╚══════╝ ╚══╝╚══╝ ╚═╝╚═╝        ╚═╝    ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝ 
-```
+## Installation
 
----
-
-## 📦 Installation & Setup
-
-swiftClaw can be installed locally in a development project using package managers, or installed globally as a standalone binary via `curl` or PowerShell.
-
-### Method 1: Local Project Installation (Recommended)
-
-To run swiftClaw inside a specific codebase/project directory without polluting your global system environment (and without requiring `-g` global installation), install it locally:
-
-| Package Manager | Installation Command | Execution Command |
-| :--- | :--- | :--- |
-| **npm** | `npm install swiftClaw` | `npx swiftClaw` |
-| **bun** | `bun add swiftClaw` | `bunx swiftClaw` |
-| **pnpm** | `pnpm add swiftClaw` | `pnpm swiftClaw` |
-
-> [!IMPORTANT]
-> **Install First:** You must download/install the package locally to your project first before running any of the execution commands. Running without installation is not supported.
-
-#### 🚀 Run Directly as `swiftClaw`
-If you want to run the locally installed tool by typing just `swiftClaw` or `swiftclaw` in your terminal (without needing `npx`, `bunx`, or `pnpm`), add the project's local bin folder to your shell's search path. Add this line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
-
+### macOS & Linux (standalone binary)
 ```bash
-export PATH="./node_modules/.bin:$PATH"
+curl -fsSL https://swiftclaw.online/install | bash
 ```
-Once added and your shell is reloaded, you can simply type `swiftClaw` inside any project directory where swiftClaw is installed!
+Pin a specific version: `VERSION=1.0.1 curl -fsSL https://swiftclaw.online/install | bash`
 
----
-
-### Method 2: Standalone Shell Script (macOS & Linux)
-
-For users who want swiftClaw available system-wide without relying on Node.js or Bun:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/anupam/swiftClaw/main/install.sh | bash
-```
-
-#### What this script does:
-1. Auto-detects your Operating System (macOS/Linux) and architecture (x64/ARM64).
-2. Downloads the latest pre-compiled standalone binary to `$HOME/.local/bin/swiftClaw`.
-3. Creates a symlink to `$HOME/.local/bin/swiftclaw` so both `swiftClaw` and `swiftclaw` commands run the tool.
-4. Makes the binary executable and prompts you to add `$HOME/.local/bin` to your shell's `PATH` if it isn't already there.
-
----
-
-### Method 3: Standalone PowerShell (Windows)
-
-For Windows users who want a global standalone CLI:
-
-Open PowerShell (as a normal user) and execute:
-
+### Windows (standalone binary)
 ```powershell
-powershell -Command "$installDir = \"$HOME\AppData\Local\Programs\swiftclaw\"; New-Item -ItemType Directory -Force -Path $installDir; Invoke-WebRequest -Uri \"https://github.com/anupam/swiftClaw/releases/latest/download/swiftclaw-windows-x64.exe\" -OutFile \"$installDir\swiftClaw.exe\"; [System.Environment]::SetEnvironmentVariable(\"PATH\", \"$([System.Environment]::GetEnvironmentVariable(\"PATH\", \"User\"));$installDir\", \"User\"); Write-Host '✓ swiftClaw successfully installed! Please restart your terminal and run: swiftClaw' -ForegroundColor Green"
+iwr -useb https://swiftclaw.online/install.ps1 | iex
 ```
 
-#### What this script does:
-1. Creates an installation folder at `~\AppData\Local\Programs\swiftclaw`.
-2. Downloads `swiftClaw.exe` from the GitHub release.
-3. Appends the folder path to the user environment variable `PATH` so `swiftClaw` is available from Command Prompt or PowerShell.
+### npm (requires Node.js >= 18)
+```bash
+npm install -g swiftclaw
+```
 
----
+### Docker
+```bash
+docker pull ghcr.io/anupam/swiftclaw:latest
+docker run --rm -it ghcr.io/anupam/swiftclaw:latest
+```
 
-## 🛠️ Local Development & Build
+### Homebrew (once tapped)
+```bash
+brew install anupam/tap/swiftclaw
+```
 
-If you are developing or modifying swiftClaw locally:
+## Quick Start
+```bash
+swiftClaw
+```
+First launch opens the setup wizard (OpenRouter API key required).
 
-1. **Install Dependencies:**
-   ```bash
-   bun install
-   ```
+## Build from Source
+```bash
+bun install           # install dependencies
+bun run build         # JS bundle (for npm publish)
+bun run compile       # standalone binaries for all platforms
+make install          # build + install local binary
+```
 
-2. **Run Dev Environment:**
-   ```bash
-   bun index.ts
-   ```
+## Release Process
+Tag a version and push — CI handles the rest:
+```bash
+git tag v1.0.1 && git push origin v1.0.1
+```
+This triggers GitHub Actions to:
+- Publish to npm
+- Compile binaries for macOS (arm64/x64), Linux (arm64/x64), Windows (x64)
+- Generate SHA256 checksums
+- Create a GitHub Release
+- Build and push Docker image to ghcr.io
 
-3. **Build Javascript Bundle:**
-   Bundles typescript files into an ES module with shebang target `node` in `dist/index.js`:
-   ```bash
-   bun run build
-   ```
-
-4. **Compile Standalone Binaries:**
-   Compiles native standalone executables for macOS, Linux, and Windows:
-   ```bash
-   bun run scripts/compile.ts
-   ```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
+## License
+MIT

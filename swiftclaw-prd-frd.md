@@ -73,7 +73,7 @@ If other tools treat developers like passive observers, swiftClaw treats you lik
 
 ## 4. UI/UX Architecture & AI Prompts (Landing Page)
 
-This section contains the precise generative prompts required to build the `swiftclaw.dev` frontend.
+This section contains the precise generative prompts required to build the `swiftclaw.online` frontend.
 **System Stack:** Next.js 15, Tailwind CSS v4, Framer Motion, GSAP.
 
 ### A. The Canvas: Global Background
@@ -206,7 +206,7 @@ pnpm add -g swiftclaw
 bun add -g swiftclaw
 
 # Universal shell injection (recommended)
-curl -fsSL https://swiftclaw.dev/install | bash
+curl -fsSL https://swiftclaw.online/install | bash
 
 ```
 

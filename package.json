@@ -2,6 +2,15 @@
   "name": "swiftclaw",
   "version": "1.0.1",
   "description": "AI agent and terminal companion tool",
+  "homepage": "https://swiftclaw.online",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anupam/swiftClaw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/anupam/swiftClaw/issues"
+  },
+  "keywords": ["ai", "cli", "terminal", "agent", "copilot", "developer-tools"],
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -11,8 +20,15 @@
   "files": [
     "dist/index.js"
   ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build": "bun build ./index.ts --target=node --outfile=dist/index.js --format=esm --external=commander --external=@clack/core --external=@clack/prompts --external=@mendable/firecrawl-js --external=@openrouter/ai-sdk-provider --external=ai --external=chalk --external=diff --external=figlet --external=marked --external=marked-terminal --external=telegraf --external=zod"
+    "build": "bun build ./index.ts --target=node --outfile=dist/index.js --format=esm --external=commander --external=@clack/core --external=@clack/prompts --external=@mendable/firecrawl-js --external=@openrouter/ai-sdk-provider --external=ai --external=chalk --external=diff --external=figlet --external=marked --external=marked-terminal --external=telegraf --external=zod",
+    "compile": "bun run scripts/compile.ts",
+    "prepack": "bun run build",
+    "prepublishOnly": "bun run build",
+    "postversion": "git push && git push --tags"
   },
   "devDependencies": {
     "@types/bun": "latest",

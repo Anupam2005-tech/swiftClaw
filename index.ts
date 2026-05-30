@@ -1,15 +1,21 @@
 #!/usr/bin/env node
-import "dotenv/config";
 import { Command } from "commander";
 import { runwakeup } from "./tui/wakeup.ts";
+import { runSetup } from "./utils/setup.ts";
+import { loadSwiftClawEnv } from "./utils/config.ts";
+import pkg from "./package.json" with { type: "json" };
+
+loadSwiftClawEnv();
 
 const program = new Command();
 
 program
-  .name("swiftClaw")
-  .description("swiftClaw cli")
-  .version("0.0.1")
+  .name("swiftclaw")
+  .description("swiftClaw — AI terminal companion with zero-trust staging")
+  .version(pkg.version)
   .action(async () => {
+    await runSetup();
+    loadSwiftClawEnv();
     await runwakeup();
   });
 

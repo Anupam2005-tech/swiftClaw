@@ -2,199 +2,220 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Check, Terminal, Play, Settings2 } from "lucide-react";
+import { Copy, Check, Terminal, Settings2 } from "lucide-react";
 import { ScrollReveal, ScrollSection } from "@/components/landing/scroll-reveal";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
-// Define the available installation architectures mimicking the image structure
+// Flattened, highly specific installation methods
 const INSTALL_METHODS = [
-  { id: "curl", label: "One-liner", command: "curl -fsSL https://swiftclaw.dev/install.sh | bash", comment: "# Works everywhere. Installs everything. You're welcome. 🦞" },
-  { id: "npm", label: "npm", command: "npm install -g swiftclaw", comment: "# Standard Node.js ecosystem installation." },
-  { id: "bun", label: "bun", command: "bun add -g swiftclaw", comment: "# Blazing fast edge-optimized runtime." },
-];
-
-const OS_OPTIONS = [
-  { id: "unix", label: "macOS & Linux" },
-  { id: "win", label: "Windows" },
+  { id: "curl", label: "cURL", command: "curl -fsSL https://swiftclaw.online/install.sh | bash", comment: "# Universal shell script. Installs core binaries." },
+  { id: "npm", label: "npm", command: "npm install -g swiftclaw", comment: "# Standard Node.js ecosystem global installation." },
+  { id: "bun", label: "bun", command: "bun add -g swiftclaw", comment: "# Blazing fast edge-optimized runtime execution." },
+  { id: "pnpm", label: "pnpm", command: "pnpm add -g swiftclaw", comment: "# Efficient, symlinked package manager installation." },
+  { id: "mac", label: "macOS", command: "brew install swiftclaw", comment: "# Native macOS architecture via Homebrew." },
+  { id: "linux", label: "Linux", command: "sudo apt-get install swiftclaw", comment: "# Debian/Ubuntu native APT package registry." },
+  { id: "win", label: "Windows", command: "iwr -useb https://swiftclaw.online/install.ps1 | iex", comment: "# Windows PowerShell execution script." },
 ];
 
 export function WhatIsSection() {
   const [activeMethod, setActiveMethod] = useState(INSTALL_METHODS[0]);
-  const [activeOS, setActiveOS] = useState(OS_OPTIONS[0]);
   const [copied, setCopied] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const handleCopy = (text: string) => {
-    // If Windows is selected, maybe alter the curl command conceptually, 
-    // but for demo we just copy the displayed text.
-    const finalCommand = activeOS.id === 'win' && activeMethod.id === 'curl' 
-      ? "iwr -useb https://swiftclaw.dev/install.ps1 | iex" 
-      : activeMethod.command;
-
-    navigator.clipboard.writeText(finalCommand);
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <ScrollSection id="what-is" className="relative px-4 py-24 sm:px-6 bg-background overflow-hidden isolate">
-      {/* Absolute Ambient Background Elements */}
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,rgba(248,247,251,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(248,247,251,0.08)_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(5,4,13,0.7),transparent_100%)]" />
-      <div className="absolute top-0 right-0 -mr-64 -mt-32 h-125 w-125 rounded-full bg-sc-text opacity-3 blur-30" />
+    <TooltipProvider>
+    <ScrollSection id="what-is" className="relative px-4 py-32 sm:px-6 bg-[#000000] overflow-hidden isolate selection:bg-[#FFFDF9] selection:text-black">
+      
+      {/* --- PREMIUM AWARD-WINNING BACKGROUND ARCHITECTURE --- */}
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_60%,transparent_100%)] pointer-events-none" />
+      
+      {/* Structural Grid Lines */}
+      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-[#FFFDF9]/10 to-transparent pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-px h-full bg-gradient-to-b from-transparent via-[#FFFDF9]/10 to-transparent pointer-events-none" />
+      <div className="absolute top-1/3 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#FFFDF9]/10 to-transparent pointer-events-none" />
+      
+      {/* Ambient Orbs */}
+      <div className="absolute top-0 right-0 -mr-64 -mt-32 h-[500px] w-[500px] rounded-full bg-[#FFFDF9] opacity-[0.015] blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 -ml-64 -mb-32 h-[500px] w-[500px] rounded-full bg-[#FFFDF9] opacity-[0.015] blur-[120px] pointer-events-none" />
+
+      {/* Decorative Crosshairs */}
+      <div className="absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 text-[#FFFDF9]/20 font-mono text-[10px] pointer-events-none">+</div>
+      <div className="absolute top-1/3 right-1/4 translate-x-1/2 -translate-y-1/2 text-[#FFFDF9]/20 font-mono text-[10px] pointer-events-none">+</div>
 
       <div className="mx-auto max-w-7xl relative z-10">
-        <div className="pointer-events-none hidden md:flex justify-between mb-8 text-[9px] uppercase tracking-[0.25em] text-[#FFFDF9]/30 font-mono select-none">
+        
+        {/* Micro-Typography Header */}
+        <div className="pointer-events-none hidden md:flex justify-between mb-16 text-[9px] uppercase tracking-[0.25em] text-[#FFFDF9]/30 font-mono select-none">
           <span>SYS.VER // 1.0.0-STABLE</span>
           <span>MODE // ZERO-TRUST_STAGING</span>
         </div>
         
         {/* Core Headline Matrix */}
-        <ScrollReveal className="max-w-3xl mb-20">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-white/10 bg-white/5 backdrop-blur-md">
-            <Settings2 className="w-4 h-4 text-white" />
-            <span className="font-mono text-xs font-medium tracking-widest text-white/70 uppercase">Execution Model</span>
+        <ScrollReveal className="max-w-4xl mb-24 relative">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 rounded-full border border-[#FFFDF9]/10 bg-[#FFFDF9]/[0.02] backdrop-blur-md">
+            <Settings2 className="w-3.5 h-3.5 text-[#FFFDF9]" />
+            <span className="font-mono text-[10px] font-normal tracking-widest text-[#FFFDF9]/70 uppercase">Execution Model</span>
           </div>
-          <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-6">
+          <h2 className="font-display text-5xl sm:text-6xl lg:text-7xl font-light tracking-tighter text-[#FFFDF9] mb-8 leading-[1.1]">
             Autonomous execution. <br />
-            <span className="text-transparent bg-linear-to-r from-zinc-500 to-zinc-200 bg-clip-text">Human-in-the-loop control.</span>
+            <span className="text-[#FFFDF9]/40 font-normal">Human-in-the-loop control.</span>
           </h2>
-          <p className="font-body text-lg font-light leading-relaxed text-zinc-400 max-w-2xl">
-            swiftClaw operates as a sandboxed terminal intelligence. It explores your architecture, drafts multi-file patches, and stages them in memory. Nothing hits your disk until you approve the diff.
+          <p className="font-body text-lg font-light leading-relaxed text-[#FFFDF9]/50 max-w-2xl">
+            swiftClaw operates as a sandboxed terminal intelligence. It explores your architecture, drafts multi-file patches, and stages them in memory. Nothing hits your disk until you explicitly approve the diff.
           </p>
         </ScrollReveal>
 
         {/* Asymmetric Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
-          {/* Left Block: Premium Video/Visual Interface (Span 7) */}
+          {/* Left Block: Infinite Terminal Simulation (Span 7) */}
           <ScrollReveal 
-            variant="slideRight" 
-            className="lg:col-span-7 group relative overflow-hidden rounded-3xl border border-white/10 bg-[#16161F]/70 backdrop-blur-sm min-h-100 flex items-center justify-center p-1"
+            delay={0.1}
+            className="lg:col-span-7 group relative overflow-hidden rounded-[32px] border border-[#FFFDF9]/10 bg-[#0A0A0A]/40 backdrop-blur-md min-h-[450px] flex p-1.5"
           >
-            <div className="absolute inset-0 bg-linear-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#FFFDF9]/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
             
-            <div className="relative w-full h-full rounded-[20px] bg-black/60 overflow-hidden border border-white/5 flex flex-col">
-              <div className="pointer-events-none hidden md:block absolute left-4 bottom-4 text-[9px] uppercase tracking-[0.25em] text-[#FFFDF9]/30 font-mono select-none">
-                MEM_BUFFER // SECURE
-              </div>
-              {/* Fake IDE/Video Header */}
-              <div className="h-12 w-full border-b border-white/10 flex items-center px-4 gap-2 bg-zinc-950/80 backdrop-blur-md z-10">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-                  <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-                  <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+            <div className="relative w-full h-full rounded-[26px] bg-[#000000] overflow-hidden border border-[#FFFDF9]/5 flex flex-col">
+              
+              {/* Terminal Header */}
+              <div className="h-14 w-full border-b border-[#FFFDF9]/10 flex items-center px-5 gap-3 bg-[#050505] z-10 relative">
+                <div className="flex gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]" />
                 </div>
-                <div className="flex-1 text-center font-mono text-[10px] text-zinc-500">swiftClaw Engine Demo</div>
+                <div className="flex-1 text-center font-mono text-[9px] uppercase tracking-widest text-[#FFFDF9]/40">swiftClaw Agent Loop</div>
               </div>
               
-              {/* Video Play Area Mock */}
-              <div className="flex-1 relative flex items-center justify-center bg-zinc-950">
-                 {!isPlaying ? (
-                    <motion.button 
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setIsPlaying(true)}
-                      className="w-16 h-16 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center group-hover:bg-white/10 transition-colors duration-500 z-20"
-                    >
-                      <Play className="w-6 h-6 text-white ml-1 fill-white" />
-                    </motion.button>
-                 ) : (
-                    <div className="absolute inset-0 flex items-center justify-center font-mono text-xs text-zinc-600">
-                      [Video Stream Active]
-                    </div>
-                 )}
-                 <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1)_0,transparent_1px)] bg-size-[4px_4px]" />
+              {/* Integrated Image & Log Container */}
+              <div className="flex-1 relative flex flex-col justify-end overflow-hidden bg-[#050505]">
+                
+                {/* Visual Image Area (Absolute Full Cover) */}
+                <div className="absolute inset-0 z-0">
+                  <img 
+                    src="/swiftClaw.avif" 
+                    alt="Agent visualization" 
+                    className="w-full h-full object-cover opacity-50 hover:opacity-80 transition-opacity duration-700"
+                  />
+                  {/* Subtle scanline overlay */}
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100%_4px] pointer-events-none" />
+                  
+                  {/* Dark gradient fade from bottom to ensure text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/80 to-transparent pointer-events-none" />
+                </div>
+
+                {/* Log Area (Sits on top of the image) */}
+                <div className="relative z-10 w-full p-6 sm:p-8 flex flex-col justify-end pointer-events-none">
+                   <div className="font-mono text-xs sm:text-sm text-[#FFFDF9]/90 space-y-4 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -10] }}
+                        transition={{ duration: 5, repeat: Infinity, times: [0, 0.1, 0.9, 1], delay: 0 }}
+                        className="flex items-start gap-3"
+                      >
+                        <span className="text-[#FFFDF9]/50 shrink-0">01</span>
+                        <span className="text-[#00E6C3] drop-shadow-[0_0_8px_rgba(0,230,195,0.5)] shrink-0">{">"}</span>
+                        <span className="truncate">Analyzing workspace dependencies...</span>
+                      </motion.div>
+
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -10] }}
+                        transition={{ duration: 5, repeat: Infinity, times: [0, 0.1, 0.9, 1], delay: 1.5 }}
+                        className="flex items-start gap-3"
+                      >
+                        <span className="text-[#FFFDF9]/50 shrink-0">02</span>
+                        <span className="text-[#00E6C3] drop-shadow-[0_0_8px_rgba(0,230,195,0.5)] shrink-0">{">"}</span>
+                        <span className="truncate">Drafting migration for <span className="text-[#FFFDF9] font-medium">src/core/auth.ts</span></span>
+                      </motion.div>
+
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -10] }}
+                        transition={{ duration: 5, repeat: Infinity, times: [0, 0.1, 0.9, 1], delay: 3 }}
+                        className="flex items-start gap-3"
+                      >
+                        <span className="text-[#FFFDF9]/50 shrink-0">03</span>
+                        <span className="text-[#00E6C3] drop-shadow-[0_0_8px_rgba(0,230,195,0.5)] shrink-0">{">"}</span>
+                        <span className="truncate">Staging diff matrix. Awaiting validation.</span>
+                      </motion.div>
+                   </div>
+                </div>
               </div>
             </div>
           </ScrollReveal>
 
-          {/* Right Block Matrix: Features & CLI Installer (Span 5) */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
+          {/* Right Block Matrix: Features & Flat CLI Installer (Span 5) */}
+          <div className="lg:col-span-5 flex flex-col gap-8">
             
             {/* Top Cell: Architecture Card */}
-            <ScrollReveal variant="slideLeft" delay={0.1} className="flex-1 rounded-3xl border border-white/10 bg-[#0D1117] p-8 relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-8 opacity-5 transform translate-x-4 -translate-y-4 group-hover:opacity-10 group-hover:scale-110 transition-all duration-700">
-                 <Terminal className="w-24 h-24 text-white" />
+            <ScrollReveal delay={0.2} className="flex-1 rounded-[32px] border border-[#FFFDF9]/10 bg-[#0A0A0A]/40 backdrop-blur-md p-8 sm:p-10 relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-8 opacity-[0.02] transform translate-x-4 -translate-y-4 group-hover:opacity-[0.05] group-hover:scale-110 transition-all duration-1000 pointer-events-none">
+                 <Terminal className="w-32 h-32 text-[#FFFDF9]" />
                </div>
                
-               <h3 className="font-display text-xl font-bold text-white mb-3 tracking-wide uppercase">
-                 Local execution. <br/>Zero telemetry.
+               <h3 className="font-display text-3xl font-light text-[#FFFDF9] mb-4 tracking-tight">
+                 Local execution. <br/><span className="text-[#FFFDF9]/50 font-normal">Zero telemetry.</span>
                </h3>
-               <p className="font-body text-sm font-light leading-relaxed text-zinc-400">
+               <p className="font-body text-sm font-light leading-relaxed text-[#FFFDF9]/50">
                  The orchestrator runs entirely on your local machine. It maps dependencies, scans project structures, and interacts with LLMs seamlessly while respecting your `.gitignore`.
                </p>
                
-               <div className="mt-8 flex items-center gap-3">
-                 <div className="h-px flex-1 bg-linear-to-r from-zinc-800 to-transparent" />
-                 <span className="font-mono text-[10px] text-zinc-600 uppercase tracking-widest">v1.0.0 Stable</span>
+               <div className="mt-10 flex items-center gap-4">
+                 <div className="h-px flex-1 bg-gradient-to-r from-[#FFFDF9]/20 to-transparent" />
+                 <span className="font-mono text-[9px] text-[#FFFDF9]/40 uppercase tracking-widest font-normal">v1.0.0 Stable</span>
                </div>
             </ScrollReveal>
 
-            {/* Bottom Cell: The Screenshot-Inspired Installer Component */}
-            <ScrollReveal variant="slideUp" delay={0.2} className="rounded-3xl border border-white/10 bg-[#16161F] overflow-hidden shadow-2xl relative">
+            {/* Bottom Cell: Premium Flattened Installer Component */}
+            <ScrollReveal delay={0.3} className="rounded-[32px] border border-[#FFFDF9]/10 bg-[#050505] overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.8)] relative">
               
-              {/* Terminal Header Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-[#161B22] border-b border-white/5">
+              {/* Terminal Header Bar with Flattened Tabs */}
+              <div className="flex flex-col border-b border-[#FFFDF9]/10 bg-[#0A0A0A]">
                 
-                {/* Left Side: Window Controls & Package Manager Tabs */}
-                <div className="flex items-center gap-4">
-                  {/* MacOS Window Controls */}
-                  <div className="flex items-center gap-1.5 pl-1 shrink-0">
-                    <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-                    <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-                    <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+                {/* Mac Dots & Container Header */}
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-[#FFFDF9]/5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]" />
                   </div>
-
-                  {/* Installation Method Tabs */}
-                  <div className="flex items-center p-1 rounded-md bg-[#010409]">
-                    {INSTALL_METHODS.map((method) => {
-                      const isActive = activeMethod.id === method.id;
-                      return (
-                        <button
-                          key={method.id}
-                          onClick={() => setActiveMethod(method)}
-                          className={cn(
-                            "relative px-3 py-1 text-[11px] font-mono transition-colors rounded-sm",
-                            isActive ? "text-[#0D1117] font-semibold" : "text-zinc-400 hover:text-zinc-200"
-                          )}
-                        >
-                          {isActive && (
-                            <motion.div
-                              layoutId="activeMethodBg"
-                              className="absolute inset-0 bg-[#00E6C3] rounded-sm"
-                              initial={false}
-                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            />
-                          )}
-                          <span className="relative z-10">{method.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <span className="font-mono text-[9px] font-normal uppercase tracking-widest text-[#FFFDF9]/30">Deployment Script</span>
                 </div>
 
-                {/* Right Side: OS Selection Tabs */}
-                <div className="flex items-center p-1 rounded-md bg-[#010409]">
-                  {OS_OPTIONS.map((os) => {
-                    const isActive = activeOS.id === os.id;
+                {/* Highly Specific Scrollable Architecture Tabs */}
+                <div className="flex items-center px-2 py-2 overflow-x-auto scrollbar-none">
+                  {INSTALL_METHODS.map((method) => {
+                    const isActive = activeMethod.id === method.id;
                     return (
                       <button
-                        key={os.id}
-                        onClick={() => setActiveOS(os)}
+                        key={method.id}
+                        onClick={() => setActiveMethod(method)}
                         className={cn(
-                          "relative px-3 py-1 text-[11px] font-mono transition-colors rounded-sm",
-                          isActive ? "text-[#0D1117] font-semibold" : "text-zinc-400 hover:text-zinc-200"
+                          "relative px-3.5 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors rounded-lg whitespace-nowrap outline-none",
+                          isActive ? "text-[#000000] font-normal" : "text-[#FFFDF9]/40 hover:text-[#FFFDF9]"
                         )}
                       >
                         {isActive && (
                           <motion.div
-                            layoutId="activeOSBg"
-                            className="absolute inset-0 bg-[#FF5757] rounded-sm"
+                            layoutId="activeInstallTab"
+                            className="absolute inset-0 bg-[#FFFDF9] rounded-lg shadow-sm"
                             initial={false}
-                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 35 }}
                           />
                         )}
-                        <span className="relative z-10">{os.label}</span>
+                        <span className="relative z-10">{method.label}</span>
                       </button>
                     );
                   })}
@@ -202,42 +223,47 @@ export function WhatIsSection() {
               </div>
 
               {/* Terminal Code Area */}
-              <div className="relative group p-6 bg-[#0D1117] min-h-35 flex flex-col justify-center">
+              <div className="relative group p-6 sm:p-8 min-h-[160px] flex flex-col justify-center">
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={`${activeMethod.id}-${activeOS.id}`}
+                    key={activeMethod.id}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.15 }}
-                    className="font-mono text-sm"
+                    className="font-mono text-xs sm:text-sm"
                   >
-                    <div className="text-zinc-500 italic mb-4">
+                    <div className="text-[#FFFDF9]/30 italic mb-4 font-light">
                       {activeMethod.comment}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[#FF5757] font-bold">$</span>
-                      <span className="text-zinc-200 tracking-tight">
-                        {activeOS.id === 'win' && activeMethod.id === 'curl' 
-                          ? "iwr -useb https://swiftclaw.dev/install.ps1 | iex" 
-                          : activeMethod.command}
+                    <div className="flex items-center gap-3 pr-10">
+                      <span className="text-[#FFFDF9]/50 font-normal">$</span>
+                      <span className="text-[#FFFDF9] font-normal break-all">
+                        {activeMethod.command}
                       </span>
                     </div>
                   </motion.div>
                 </AnimatePresence>
                 
-                {/* Hover Copy Button */}
-                <button
-                  onClick={() => handleCopy(activeMethod.command)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md"
-                  aria-label="Copy code"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-[#00E6C3]" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </button>
+                {/* Premium Hover Copy Button */}
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleCopy(activeMethod.command)}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 p-2.5 rounded-xl bg-[#FFFDF9]/5 border border-[#FFFDF9]/10 text-[#FFFDF9]/40 opacity-0 group-hover:opacity-100 hover:text-[#FFFDF9] hover:bg-[#FFFDF9]/10 hover:border-[#FFFDF9]/20 transition-all duration-300 backdrop-blur-md outline-none"
+                      aria-label="Copy to clipboard"
+                    >
+                      {copied ? (
+                        <Check className="w-4 h-4 text-[#FFFDF9]" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" sideOffset={8} className="max-w-xs rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 leading-relaxed shadow-2xl backdrop-blur-xl">
+                    {copied ? "Copied!" : "Copy to clipboard"}
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </ScrollReveal>
           </div>
@@ -245,5 +271,6 @@ export function WhatIsSection() {
         </div>
       </div>
     </ScrollSection>
+    </TooltipProvider>
   );
 }

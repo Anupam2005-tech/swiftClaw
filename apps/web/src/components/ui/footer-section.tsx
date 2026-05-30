@@ -1,119 +1,144 @@
-'use client';
-import React from 'react';
-import type { ComponentProps, ReactNode } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+"use client";
 
+import React from "react";
+import { motion } from "framer-motion";
+import { Terminal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface FooterLink {
-	title: string;
-	href: string;
-	icon?: React.ComponentType<{ className?: string }>;
-}
-
-interface FooterSection {
-	label: string;
-	links: FooterLink[];
-}
-
-const footerLinks: FooterSection[] = [
-	{
-		label: 'Product',
-		links: [
-			{ title: 'Features', href: '#features' },
-			{ title: 'Pricing', href: '#pricing' },
-			{ title: 'Testimonials', href: '#testimonials' },
-			{ title: 'Integration', href: '/' },
-		],
-	},
-	{
-		label: 'Company',
-		links: [
-			{ title: 'FAQs', href: '/faqs' },
-			{ title: 'About Us', href: '/about' },
-			{ title: 'Privacy Policy', href: '/privacy' },
-			{ title: 'Terms of Services', href: '/terms' },
-		],
-	},
-	{
-		label: 'Resources',
-		links: [
-			{ title: 'Blog', href: '/blog' },
-			{ title: 'Changelog', href: '/changelog' },
-			{ title: 'Brand', href: '/brand' },
-			{ title: 'Help', href: '/help' },
-		],
-	},
-	
+const FOOTER_LINKS = [
+    { title: "Documentation", href: "/docs" },
+    { title: "FAQs", href: "/faq" },
+    { title: "Privacy Policy", href: "/privacy" },
+    { title: "Terms & Conditions", href: "/terms" },
 ];
 
+const smoothEasing = [0.22, 1, 0.36, 1] as const;
+
+// Custom 11x11 Pixel Heart Component
+const PixelHeart = () => (
+  <motion.svg
+    animate={{ scale: [1, 1.3, 1] }}
+    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+    viewBox="0 0 11 11"
+    className="w-3 h-3 mx-1.5 inline-block fill-accent drop-shadow-[0_0_8px_rgba(var(--accent),0.6)]"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="2" y="1" width="2" height="1" />
+    <rect x="7" y="1" width="2" height="1" />
+    <rect x="1" y="2" width="2" height="1" />
+    <rect x="4" y="2" width="3" height="1" />
+    <rect x="8" y="2" width="2" height="1" />
+    <rect x="0" y="3" width="11" height="3" />
+    <rect x="1" y="6" width="9" height="1" />
+    <rect x="2" y="7" width="7" height="1" />
+    <rect x="3" y="8" width="5" height="1" />
+    <rect x="4" y="9" width="3" height="1" />
+    <rect x="5" y="10" width="1" height="1" />
+  </motion.svg>
+);
+
 export function Footer() {
-	return (
-		<footer className="md:rounded-t-6xl relative w-full max-w-6xl mx-auto flex flex-col items-center justify-center rounded-t-4xl border-t bg-[radial-gradient(35%_128px_at_50%_0%,theme(backgroundColor.white/8%),transparent)] px-6 py-12 lg:py-16">
-			<div className="pointer-events-none hidden md:block absolute bottom-4 right-4 text-[9px] uppercase tracking-[0.25em] text-[#FFFDF9]/30 font-mono select-none">
-				LATENCY // &lt; 2ms
-			</div>
-			<div className="pointer-events-none hidden md:flex absolute top-4 left-4 text-[9px] uppercase tracking-[0.25em] text-[#FFFDF9]/30 font-mono select-none">
-				ENV // PRODUCTION
-			</div>
-			<div className="bg-foreground/20 absolute top-0 right-1/2 left-1/2 h-px w-1/3 -translate-x-1/2 -translate-y-1/2 rounded-full blur" />
+  const currentYear = new Date().getFullYear();
 
-			<div className="grid w-full gap-8 xl:grid-cols-3 xl:gap-8">
-				<AnimatedContainer className="space-y-4">
-				
-					<p className="text-muted-foreground mt-8 text-sm md:mt-0">
-						© {new Date().getFullYear()} Asme. All rights reserved.
-					</p>
-				</AnimatedContainer>
+  return (
+    
+    <footer className="relative w-full bg-[#030305] text-[#FFFDF9] overflow-hidden pt-32 pb-8 isolate">
+      {/* Ambient Background & Grid Lines */}
+      <div className="absolute inset-0 z-0 pointer-events-none flex justify-center">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FFFDF9]/10 to-transparent" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[300px] bg-accent/5 blur-[120px] rounded-[100%]" />
+      </div>
 
-				<div className="mt-10 grid grid-cols-2 gap-8 md:grid-cols-4 xl:col-span-2 xl:mt-0">
-					{footerLinks.map((section, index) => (
-						<AnimatedContainer key={section.label} delay={0.1 + index * 0.1}>
-							<div className="mb-10 md:mb-0">
-								<h3 className="text-xs">{section.label}</h3>
-								<ul className="text-muted-foreground mt-4 space-y-2 text-sm">
-									{section.links.map((link) => (
-										<li key={link.title}>
-											<a
-												href={link.href}
-												className="hover:text-foreground inline-flex items-center transition-all duration-300"
-											>
-												{link.icon && <link.icon className="me-1 size-4" />}
-												{link.title}
-											</a>
-										</li>
-									))}
-								</ul>
-							</div>
-						</AnimatedContainer>
-					))}
-				</div>
-			</div>
-		</footer>
-	);
-};
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 relative z-10 flex flex-col">
+        
+        {/* Top Section: Branding & Links */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-16 mb-32">
+          
+          {/* Left: Branding & Credit */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, ease: smoothEasing }}
+            className="flex flex-col gap-8"
+          >
+<div className="flex flex-col gap-8">
+  <div className="flex items-center gap-4">
+    {/* Terminal Icon only, no container or backdrop */}
+    <Terminal className="h-6 w-6 text-accent" />
+    
+    <div className="flex flex-col">
+      <span className="font-display text-2xl font-light tracking-widest ">
+        swiftClaw
+      </span>
+      <span className="font-mono text-[9px] font-thin uppercase tracking-[0.4em] text-[#FFFDF9]/40 mt-1">
+        System Core v2.0
+      </span>
+    </div>
+  </div>
 
-type ViewAnimationProps = {
-	delay?: number;
-	className?: ComponentProps<typeof motion.div>['className'];
-	children: ReactNode;
-};
+  <div className="font-body text-xs md:text-sm font-light text-[#FFFDF9]/50 tracking-wide flex items-center">
+    Made with <PixelHeart /> by anupam.
+  </div>
+</div>
+          </motion.div>
 
-function AnimatedContainer({ className, delay = 0.1, children }: ViewAnimationProps) {
-	const shouldReduceMotion = useReducedMotion();
+          {/* Right: Essential Navigation */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2, ease: smoothEasing }}
+            className="flex flex-col items-start md:items-end gap-6"
+          >
+            <div className="font-mono text-[10px] font-thin uppercase tracking-[0.3em] text-[#FFFDF9]/30 mb-2">
+              Directory
+            </div>
+            <ul className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-10">
+              {FOOTER_LINKS.map((link, index) => (
+                <li key={link.title}>
+                  <a
+                    href={link.href}
+                    className="group relative font-display text-sm md:text-base font-light tracking-wide text-[#FFFDF9]/70 transition-colors duration-300 hover:text-[#FFFDF9]"
+                  >
+                    {link.title}
+                    {/* Minimalist Underline Hover */}
+                    <span className="absolute -bottom-2 left-0 w-0 h-px bg-accent transition-all duration-500 ease-out group-hover:w-full" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        </div>
 
-	if (shouldReduceMotion) {
-		return children;
-	}
+        {/* Technical Data Tags */}
+        <div className="w-full flex justify-between border-b-[0.5px] border-[#FFFDF9]/10 pb-8 mb-8 pointer-events-none select-none">
+          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#FFFDF9]/20">
+            LATENCY // &lt; 2ms
+          </span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#FFFDF9]/20">
+            ENV // PRODUCTION
+          </span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#FFFDF9]/20">
+            © {currentYear} ALL RIGHTS RESERVED
+          </span>
+        </div>
 
-	return (
-		<motion.div
-			initial={{ filter: 'blur(4px)', translateY: -8, opacity: 0 }}
-			whileInView={{ filter: 'blur(0px)', translateY: 0, opacity: 1 }}
-			viewport={{ once: true }}
-			transition={{ delay, duration: 0.8 }}
-			className={className}
-		>
-			{children}
-		</motion.div>
-	);
-};
+      </div>
+
+      {/* Massive Edge-to-Edge Typography */}
+      <motion.div 
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.2, ease: smoothEasing }}
+        className="w-full overflow-hidden flex justify-center px-4 md:px-8 mt-12"
+      >
+        <h1 className="font-display text-[16vw] md:text-[18vw] leading-[0.8] font-thin tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-[#FFFDF9]/20 via-[#FFFDF9]/5 to-transparent select-none cursor-default transition-all duration-1000 hover:from-[#FFFDF9]/40 hover:via-[#FFFDF9]/10">
+          swiftClaw
+        </h1>
+      </motion.div>
+
+    </footer>
+  );
+}

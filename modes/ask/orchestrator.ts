@@ -10,6 +10,8 @@ import { renderTerminalMarkdown } from "../../tui/termina-md";
 import { runApprovalFlow } from "../agent/approvals";
 import { createWebTools } from "../plan/web-tools";
 import { getAskSystemPrompt, TOOL_DESCRIPTIONS } from "../prompts";
+import { THEME } from "../../tui/wakeup";
+import { formatAiError } from "../../utils/config.ts";
 
 function createAskTools(
   executor: ToolExecutor,
@@ -123,9 +125,9 @@ ${answer.trim()}`;
 }
 
 export async function runAskMode() {
-  console.log(chalk.bold("\n Ask Mode\n "));
+  console.log(`\n  ${THEME.accent("»")} ${THEME.primary("Knowledge Retrieval Initialized")}\n`);
 
-  const questions = await text({ message: "What do you want to ask?" });
+  const questions = await text({ message: THEME.primary("Query the codebase:") });
   if (isCancel(questions) || !questions.trim()) return;
 
   const config = defaultAgentConfig();
@@ -148,7 +150,7 @@ export async function runAskMode() {
     ...(hasweb ? createWebTools(actionTracker, uiTracker) : {}),
   };
 
-  uiTracker.start("Agent is thinking...");
+  uiTracker.start("Agent synthesizing...");
 
   const agent = new ToolLoopAgent({
     model: getAgentModel(),
@@ -162,34 +164,34 @@ export async function runAskMode() {
       prompt: questions.trim(),
       onStepFinish: ({ toolCalls }) => {
         if (toolCalls.length > 0) {
-          uiTracker.stop("Executed tools.");
+          uiTracker.stop("Orchestration complete.");
           for (const toolCall of toolCalls) {
             if (!toolCall) continue;
             const preview = JSON.stringify(toolCall.input).slice(0, 200);
             const { log } = require("@clack/prompts");
             log.step(
-              `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+              `${THEME.accent("✓")} ${THEME.primary(String(toolCall.toolName))} ${THEME.secondary(preview + (preview.length >= 200 ? "..." : ""))}`
             );
           }
-          uiTracker.start("Refining response...");
+          uiTracker.start("Refining output...");
         } else {
-          uiTracker.update("Refining response...");
+          uiTracker.update("Refining output...");
         }
       },
     });
     
-    uiTracker.stop("Finished thinking.");
+    uiTracker.stop("Synthesis complete.");
     const answer = result.text?.trim() || "(no answer)";
     console.log(`\n +${renderTerminalMarkdown(answer)} + \n`);
 
     const wantsSave = await confirm({
-      message: "Do you want to save this to a .md file?",
+      message: THEME.primary("Export findings to markdown?"),
       initialValue: false,
     });
     if (isCancel(wantsSave) || !wantsSave) return;
 
     const filename = await text({
-      message: "Filename",
+      message: THEME.primary("Export filename:"),
       initialValue: "ask.md",
       validate: (v) => {
         const s = (v ?? " ").trim();
@@ -208,13 +210,10 @@ export async function runAskMode() {
 
     executor.applyApprovedFromTracker()
     executor.clearStaging()
-  } catch (error: any) {
-    uiTracker.stop("Failed to generate response.");
+  } catch (error: unknown) {
+    uiTracker.stop("Engine fault: Generation failed.");
     const { log } = require("@clack/prompts");
-    log.error(chalk.red(`AI generation failed: ${error.message || error}`));
-    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
-       log.warn(chalk.yellow("Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment."));
-    }
+    log.error(THEME.error(`AI generation failed: ${formatAiError(error)}`));
   }
 
 }

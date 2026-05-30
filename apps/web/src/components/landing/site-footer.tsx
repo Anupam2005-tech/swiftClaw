@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ScrollReveal, ScrollSection } from "@/components/landing/scroll-reveal";
+import { useRecaptcha } from "@/lib/use-recaptcha";
 
 const FOOTER_LINKS = [
   {
@@ -24,6 +25,36 @@ const FOOTER_LINKS = [
 
 export function SiteFooter() {
   const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "verifying" | "error" | "success">("idle");
+  const { isReady, isConfigured, verifyWithBackend } = useRecaptcha();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || status === "verifying") return;
+
+    const mailtoUrl = `mailto:hello@swiftclaw.online?subject=Subscribe&body=${encodeURIComponent(email)}`;
+
+    if (!isReady) {
+      window.location.href = mailtoUrl;
+      return;
+    }
+
+    setStatus("verifying");
+
+    const valid = await verifyWithBackend("newsletter_subscribe");
+
+    if (!valid) {
+      window.location.href = mailtoUrl;
+      setStatus("idle");
+      setEmail("");
+      return;
+    }
+
+    setStatus("success");
+    window.location.href = mailtoUrl;
+    setTimeout(() => setStatus("idle"), 3000);
+    setEmail("");
+  };
 
   return (
     <ScrollSection className="relative mt-24">
@@ -47,11 +78,7 @@ export function SiteFooter() {
               </label>
               <form
                 className="mt-3 flex flex-col gap-3 sm:flex-row"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (email)
-                    window.location.href = `mailto:hello@swiftclaw.dev?subject=Subscribe&body=${encodeURIComponent(email)}`;
-                }}
+                onSubmit={handleSubmit}
               >
                 <input
                   id="newsletter"
@@ -63,11 +90,21 @@ export function SiteFooter() {
                 />
                 <button
                   type="submit"
-                  className="rounded-lg border border-accent bg-accent px-6 py-3 font-body text-sm font-medium uppercase tracking-widest text-accent-foreground hover:bg-accent/90"
+                  disabled={isConfigured && !isReady}
+                  className="rounded-lg border border-accent bg-accent px-6 py-3 font-body text-sm font-medium uppercase tracking-widest text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Subscribe
+                  {isConfigured && !isReady ? "Loading..." : "Subscribe"}
                 </button>
               </form>
+              {status === "verifying" && (
+                <p className="mt-2 font-mono text-[10px] text-accent/70">Verifying... </p>
+              )}
+              {status === "error" && (
+                <p className="mt-2 font-mono text-[10px] text-red-400/70">Verification failed. Please try again.</p>
+              )}
+              {status === "success" && (
+                <p className="mt-2 font-mono text-[10px] text-green-400/70">Opening mail client...</p>
+              )}
             </div>
           </ScrollReveal>
 
@@ -75,7 +112,7 @@ export function SiteFooter() {
             {FOOTER_LINKS.map((section, i) => (
               <ScrollReveal key={section.label} delay={0.08 + i * 0.06}>
                 <div>
-                  <h3 className="font-body text-xs font-semibold uppercase tracking-wider text-[#FF3800]">
+                  <h3 className="font-body text-xs font-semibold uppercase tracking-wider text-[#FFFDF9]">
                     {section.label}
                   </h3>
                   <ul className="mt-4 space-y-2">
@@ -83,7 +120,7 @@ export function SiteFooter() {
                       <li key={link.title}>
                         <Link
                           href={link.href}
-                          className="font-body text-sm font-light text-sc-text-muted transition-colors hover:text-[#FF3800]"
+                          className="font-body text-sm font-light text-sc-text-muted transition-colors hover:text-[#FFFDF9]"
                         >
                           {link.title}
                         </Link>

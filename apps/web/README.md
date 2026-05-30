@@ -1,6 +1,6 @@
 # swiftClaw Landing Page
 
-Marketing site for [swiftclaw.dev](https://swiftclaw.dev) — Next.js App Router, Tailwind CSS v4, Framer Motion, GSAP.
+Marketing site for [swiftclaw.online](https://swiftclaw.online) — Next.js App Router, Tailwind CSS v4, Framer Motion, GSAP.
 
 ## Develop
 
