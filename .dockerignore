@@ -4,6 +4,5 @@ dist
 .github
 .env
 apps
-ai
 openspec
 *.md
