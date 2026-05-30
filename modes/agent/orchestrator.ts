@@ -35,33 +35,46 @@ export async function runAgentmode() {
 
   uiTracker.start("Agent is thinking...");
 
-  const result = await agent.generate({
-    prompt: goal?.trim(),
-    onStepFinish: ({ toolCalls }) => {
-      for (const toolCall of toolCalls) {
-        const preview = JSON.stringify(toolCall.input).slice(0, 200);
-        log.step(
-          `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
-        );
+  try {
+    const result = await agent.generate({
+      prompt: goal?.trim(),
+      onStepFinish: ({ toolCalls }) => {
+        if (toolCalls.length > 0) {
+          uiTracker.stop("Executed tools.");
+          for (const toolCall of toolCalls) {
+            const preview = JSON.stringify(toolCall.input).slice(0, 200);
+            log.step(
+              `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+            );
+          }
+          uiTracker.start("Refining response...");
+        } else {
+          uiTracker.update("Refining response...");
+        }
+      },
+    });
+
+    uiTracker.stop("Finished thinking.");
+    if (result.text?.trim()) console.log(renderTerminalMarkdown(result.text));
+
+    const ok = await runApprovalFlow(internalTracker);
+    if (!ok) return executor.clearStaging();
+
+    const errors = executor.applyApprovedFromTracker();
+    if (errors.length) {
+      console.log(chalk.red("\n Some operations reported errors...\n"));
+      for (const e of errors) {
+        console.log(chalk.red(` ${e}`));
       }
-      uiTracker.update("Refining response...");
-    },
-  });
-
-  uiTracker.stop("Finished thinking.");
-  if (result.text?.trim()) console.log(renderTerminalMarkdown(result.text));
-
-  const ok = await runApprovalFlow(internalTracker);
-  if (!ok) return executor.clearStaging();
-
-  const errors = executor.applyApprovedFromTracker();
-  if (errors.length) {
-    console.log(chalk.red("\n Some operations reported errors...\n"));
-    for (const e of errors) {
-      console.log(chalk.red(` ${e}`));
+    } else {
+      console.log(chalk.green("\nApplied successfully\n"));
     }
-  } else {
-    console.log(chalk.green("\nApplied successfully\n"));
+    executor.clearStaging();
+  } catch (error: any) {
+    uiTracker.stop("Failed to generate response.");
+    log.error(chalk.red(`AI generation failed: ${error.message || error}`));
+    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
+       log.warn(chalk.yellow("Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment."));
+    }
   }
-  executor.clearStaging();
 }

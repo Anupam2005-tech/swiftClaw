@@ -153,35 +153,50 @@ export async function generatePlan(goal: string) {
   
   uiTracker.start("Researching & drafting a plan...");
 
-  const result = await generateText({
-    model,
-    tools,
-    stopWhen: stepCountIs(20),
-    system: getPlanSystemPrompt(config.codebasePath, hasweb),
-    prompt: `User goal: \n${goal}`,
-    output: Output.object({ schema: planSchema }),
-    onStepFinish: ({ toolCalls }) => {
-      for (const toolCall of toolCalls) {
-        if (!toolCall) continue;
-        const preview = JSON.stringify(toolCall.input).slice(0, 200);
-        const { log } = require("@clack/prompts");
-        log.step(
-          `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
-        );
-      }
-      uiTracker.update("Refining plan...");
-    },
-  });
-  
-  uiTracker.stop("Finished drafting plan.");
+  try {
+    const result = await generateText({
+      model,
+      tools,
+      stopWhen: stepCountIs(20),
+      system: getPlanSystemPrompt(config.codebasePath, hasweb),
+      prompt: `User goal: \n${goal}`,
+      output: Output.object({ schema: planSchema }),
+      onStepFinish: ({ toolCalls }) => {
+        if (toolCalls.length > 0) {
+          uiTracker.stop("Executed tools.");
+          for (const toolCall of toolCalls) {
+            if (!toolCall) continue;
+            const preview = JSON.stringify(toolCall.input).slice(0, 200);
+            const { log } = require("@clack/prompts");
+            log.step(
+              `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+            );
+          }
+          uiTracker.start("Refining plan...");
+        } else {
+          uiTracker.update("Refining plan...");
+        }
+      },
+    });
+    
+    uiTracker.stop("Finished drafting plan.");
 
-  const validated = planSchema.parse(result.output);
-  const steps: PlanStep[] = validated.steps.map((s, i) => ({
-    id: `step-${i + 1}`,
-    title: s.title,
-    description: s.description,
-    hints: s.hints,
-    complexity: s.complexity,
-  }));
-  return { goal, researchSummary: validated.researchSummary, steps };
+    const validated = planSchema.parse(result.output);
+    const steps: PlanStep[] = validated.steps.map((s, i) => ({
+      id: `step-${i + 1}`,
+      title: s.title,
+      description: s.description,
+      hints: s.hints,
+      complexity: s.complexity,
+    }));
+    return { goal, researchSummary: validated.researchSummary, steps };
+  } catch (error: any) {
+    uiTracker.stop("Failed to generate plan.");
+    const { log } = require("@clack/prompts");
+    log.error(chalk.red(`AI generation failed: ${error.message || error}`));
+    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
+       log.warn(chalk.yellow("Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment."));
+    }
+    return null; // Return null on failure so the caller can handle it
+  }
 }

@@ -153,15 +153,24 @@ export async function runAsk(ctx: import("telegraf").Context, question: string) 
     tools,
   });
 
-  const { text } = await agent.generate({ 
-    prompt: question,
-    onStepFinish: ({ toolCalls }) => {
-      uiTracker.update("Refining response...");
+  try {
+    const { text } = await agent.generate({ 
+      prompt: question,
+      onStepFinish: ({ toolCalls }) => {
+        uiTracker.update("Refining response...");
+      }
+    });
+    
+    uiTracker.stop("Finished thinking.");
+    await replyMd(ctx, text || "no answer");
+  } catch (error: any) {
+    uiTracker.fail("Failed to generate response.");
+    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
+      await replyMd(ctx, "❌ Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment.");
+    } else {
+      await replyMd(ctx, `❌ AI generation failed: ${error.message || error}`);
     }
-  });
-  
-  uiTracker.stop("Finished thinking.");
-  await replyMd(ctx, text || "no answer");
+  }
 }
 
 export interface TelegramSession {
@@ -230,15 +239,24 @@ export async function runAgent(ctx: import("telegraf").Context, chatId: number, 
     ...agentoptions(config, 40, getTelegramAgentPrompt(config.codebasePath)),
     tools,
   });
-  const { text } = await agent.generate({ 
-    prompt: goal,
-    onStepFinish: () => {
-      uiTracker.update("Refining response...");
+  try {
+    const { text } = await agent.generate({ 
+      prompt: goal,
+      onStepFinish: () => {
+        uiTracker.update("Refining response...");
+      }
+    });
+    uiTracker.stop("Finished thinking.");
+    if (text?.trim()) await replyMd(ctx, text.trim());
+    await finishOrApprove(ctx, chatId, tracker, executor, '✔ Done. No file changes were needed.');
+  } catch (error: any) {
+    uiTracker.fail("Failed to generate response.");
+    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
+      await replyMd(ctx, "❌ Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment.");
+    } else {
+      await replyMd(ctx, `❌ AI generation failed: ${error.message || error}`);
     }
-  });
-  uiTracker.stop("Finished thinking.");
-  if (text?.trim()) await replyMd(ctx, text.trim());
-  await finishOrApprove(ctx, chatId, tracker, executor, '✔ Done. No file changes were needed.');
+  }
 }
 
 export async function runPlanSteps(ctx: import("telegraf").Context, chatId: number, plan: Plan) {
@@ -283,23 +301,33 @@ export async function runPlanSteps(ctx: import("telegraf").Context, chatId: numb
     });
 
     uiTracker.start("Agent is thinking...");
-    const result = await agent.generate({ 
-      messages,
-      onStepFinish: () => {
-        uiTracker.update("Refining response...");
+    try {
+      const result = await agent.generate({ 
+        messages,
+        onStepFinish: () => {
+          uiTracker.update("Refining response...");
+        }
+      });
+      uiTracker.stop("Finished step.");
+      const { text, response } = result;
+
+      if (text?.trim()) {
+        await replyMd(ctx, text.trim());
       }
-    });
-    uiTracker.stop("Finished step.");
-    const { text, response } = result;
 
-    if (text?.trim()) {
-      await replyMd(ctx, text.trim());
-    }
-
-    if (response?.messages) {
-      messages.push(...response.messages);
-    } else if (text) {
-      messages.push({ role: "assistant", content: text });
+      if (response?.messages) {
+        messages.push(...response.messages);
+      } else if (text) {
+        messages.push({ role: "assistant", content: text });
+      }
+    } catch (error: any) {
+      uiTracker.fail("Failed to generate response for step.");
+      if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
+        await replyMd(ctx, "❌ Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment.");
+      } else {
+        await replyMd(ctx, `❌ AI generation failed: ${error.message || error}`);
+      }
+      return; // Stop executing further steps if an error occurs
     }
   }
   await finishOrApprove(ctx, chatId, tracker, executor, '✔ Done. Plan executed successfully.');

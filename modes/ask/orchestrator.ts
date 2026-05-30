@@ -157,50 +157,64 @@ export async function runAskMode() {
     tools,
   });
 
-  const result = await agent.generate({
-    prompt: questions.trim(),
-    onStepFinish: ({ toolCalls }) => {
-      for (const toolCall of toolCalls) {
-        if (!toolCall) continue;
-        const preview = JSON.stringify(toolCall.input).slice(0, 200);
-        const { log } = require("@clack/prompts");
-        log.step(
-          `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
-        );
-      }
-      uiTracker.update("Refining response...");
-    },
-  });
-  
-  uiTracker.stop("Finished thinking.");
-  const answer = result.text?.trim() || "(no answer)";
-  console.log(`\n +${renderTerminalMarkdown(answer)} + \n`);
+  try {
+    const result = await agent.generate({
+      prompt: questions.trim(),
+      onStepFinish: ({ toolCalls }) => {
+        if (toolCalls.length > 0) {
+          uiTracker.stop("Executed tools.");
+          for (const toolCall of toolCalls) {
+            if (!toolCall) continue;
+            const preview = JSON.stringify(toolCall.input).slice(0, 200);
+            const { log } = require("@clack/prompts");
+            log.step(
+              `${chalk.green("✓")} ${chalk.bold(String(toolCall.toolName))} ${chalk.dim(preview + (preview.length >= 200 ? "..." : ""))}`
+            );
+          }
+          uiTracker.start("Refining response...");
+        } else {
+          uiTracker.update("Refining response...");
+        }
+      },
+    });
+    
+    uiTracker.stop("Finished thinking.");
+    const answer = result.text?.trim() || "(no answer)";
+    console.log(`\n +${renderTerminalMarkdown(answer)} + \n`);
 
-  const wantsSave = await confirm({
-    message: "Do you want to save this to a .md file?",
-    initialValue: false,
-  });
-  if (isCancel(wantsSave) || !wantsSave) return;
+    const wantsSave = await confirm({
+      message: "Do you want to save this to a .md file?",
+      initialValue: false,
+    });
+    if (isCancel(wantsSave) || !wantsSave) return;
 
-  const filename = await text({
-    message: "Filename",
-    initialValue: "ask.md",
-    validate: (v) => {
-      const s = (v ?? " ").trim();
-      if (!s) return "Required";
-      if (s.includes(" ..") || s.includes("/") || s.includes("\\"))
-        return " No paths";
-      if (!s.toLowerCase().endsWith(".md")) return " Must end with .md";
-    },
-  });
+    const filename = await text({
+      message: "Filename",
+      initialValue: "ask.md",
+      validate: (v) => {
+        const s = (v ?? " ").trim();
+        if (!s) return "Required";
+        if (s.includes(" ..") || s.includes("/") || s.includes("\\"))
+          return " No paths";
+        if (!s.toLowerCase().endsWith(".md")) return " Must end with .md";
+      },
+    });
 
-  if(isCancel(filename))return
+    if(isCancel(filename))return
 
-  executor.createFile(filename,asMd(questions,answer))
-  const ok =await runApprovalFlow(actionTracker)
-  if(!ok)return executor.clearStaging()
+    executor.createFile(filename,asMd(questions,answer))
+    const ok =await runApprovalFlow(actionTracker)
+    if(!ok)return executor.clearStaging()
 
-executor.applyApprovedFromTracker()
-executor.clearStaging()
+    executor.applyApprovedFromTracker()
+    executor.clearStaging()
+  } catch (error: any) {
+    uiTracker.stop("Failed to generate response.");
+    const { log } = require("@clack/prompts");
+    log.error(chalk.red(`AI generation failed: ${error.message || error}`));
+    if (error.message?.includes("429") || error.name === "RetryError" || error.name === "AI_APICallError") {
+       log.warn(chalk.yellow("Rate limit hit or API error. Consider adding your own OPENROUTER_API_KEY in the environment."));
+    }
+  }
 
 }
