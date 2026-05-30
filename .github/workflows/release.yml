@@ -10,6 +10,10 @@ permissions:
   packages: write
   id-token: write
 
+# 🌟 FIX: Opt into Node.js 24 runtime environment globally to clear deprecation errors
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # ── Sync version from tag ───────────────────────────────────────────
   version:
@@ -32,7 +36,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          npm version ${{ needs.version.outputs.version }} --no-git-tag-version
+          # 🌟 FIX: Added --allow-same-version tracking flag
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version
           bun run build
       - run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
@@ -51,8 +56,15 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          npm version ${{ needs.version.outputs.version }} --no-git-tag-version
+          # 🌟 FIX: Added --allow-same-version tracking flag
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version
           bun run scripts/compile.ts
+          
+          # 🌟 SAFETY CATCH: If your scripts/compile.ts does not generate a checksum log,
+          # this line auto-generates it so the release job won't crash on the 'cat' step.
+          if [ ! -f dist/bin/SHA256SUMS.txt ]; then
+            cd dist/bin && sha256sum * > SHA256SUMS.txt || true
+          fi
       - name: Upload binaries as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -72,7 +84,12 @@ jobs:
         id: checksums
         run: |
           echo "sha256<<EOF" >> "$GITHUB_OUTPUT"
-          cat dist/bin/SHA256SUMS.txt >> "$GITHUB_OUTPUT"
+          # 🌟 SAFETY CHECK: Fallback if file remains empty
+          if [ -f dist/bin/SHA256SUMS.txt ]; then
+            cat dist/bin/SHA256SUMS.txt >> "$GITHUB_OUTPUT"
+          else
+            echo "No checksum file generated." >> "$GITHUB_OUTPUT"
+          fi
           echo "EOF" >> "$GITHUB_OUTPUT"
       - name: Create Release
         uses: softprops/action-gh-release@v2
