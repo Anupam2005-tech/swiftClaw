@@ -7,7 +7,7 @@ COPY tui/ tui/
 COPY utils/ utils/
 COPY modes/ modes/
 COPY scripts/ scripts/
-
+COPY ai/ ai/
 RUN bun install --frozen-lockfile
 RUN bun run scripts/compile.ts
 
