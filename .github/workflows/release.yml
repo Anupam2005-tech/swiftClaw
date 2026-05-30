@@ -27,10 +27,9 @@ jobs:
   npm-publish:
     needs: version
     runs-on: ubuntu-latest
-    # 🌟 CRUCIAL: Job-level permissions isolate and force OIDC handoff to npm
     permissions:
       contents: read
-      id-token: write
+      id-token: write # Required to fetch the OIDC token from GitHub
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -42,10 +41,12 @@ jobs:
           npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run build
       - name: Publish to npm using Trusted Publishing
-        uses: JS-DevTools/npm-publish@v3
-        with:
-          provenance: true
-          access: public
+        # 🌟 FIX: Using native npm publish and feeding it the OIDC token directly into the registry configuration
+        run: |
+          npm config set //registry.npmjs.org/:_authToken \${{ secrets.GITHUB_TOKEN }}
+          npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ── Build standalone binaries ───────────────────────────────────────
   binaries:
