@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { Terminal, Database, Network, Waves, ArrowRight, Zap, Clock, Sparkles } from "lucide-react";
+import { Terminal, ArrowRight, Zap, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Sassed-up the roadmap data for that premium ego.
@@ -32,7 +32,7 @@ const ROADMAP = [
       "Contextual token optimization (saving your money)",
     ],
     active: false,
-    icon: Database,
+    icon: Terminal,
   },
   {
     phase: "03",
@@ -45,7 +45,7 @@ const ROADMAP = [
       "Jira state awareness (sorry in advance)",
     ],
     active: false,
-    icon: Network,
+    icon: Terminal,
   },
   {
     phase: "04",
@@ -58,7 +58,7 @@ const ROADMAP = [
       "Advanced screen-state reasoning",
     ],
     active: false,
-    icon: Waves,
+    icon: Terminal,
   },
 ];
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, MessageCircle, Map, Shield, ArrowUpRight, Sparkles, Check, Orbit, Activity, TerminalSquare, Eye } from "lucide-react";
+import { Bot, Map, Shield, Sparkles, Check, Orbit, Activity, Eye, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -211,7 +211,7 @@ const CAPABILITIES = [
     title: "Agent Mode",
     meta: "AUTONOMOUS SYSTEM",
     description: "Assign complex objectives, step back, and watch staged atomic patches pile up securely in memory. Zero automated storage writes.",
-    icon: <Bot className="h-4 w-4 text-white" strokeWidth={1.5} />,
+    icon: <Terminal className="h-4 w-4 text-white" strokeWidth={1.5} />,
     colSpan: "md:col-span-2",
     visual: <AgentTerminalVisual />,
   },
@@ -219,7 +219,7 @@ const CAPABILITIES = [
     title: "Telegram Gateway",
     meta: "REMOTE TELEMETRY",
     description: "Real-time verification structures and prompt stream pipelines pushed directly to your personal authenticated hardware.",
-    icon: <MessageCircle className="h-4 w-4 text-white" strokeWidth={1.5} />,
+    icon: <Terminal className="h-4 w-4 text-white" strokeWidth={1.5} />,
     colSpan: "md:col-span-1",
     visual: <TelegramMobileVisual />,
   },
@@ -227,7 +227,7 @@ const CAPABILITIES = [
     title: "Plan & Ask Operations",
     meta: "COGNITIVE LAYERS",
     description: "Deconstruct system architectures into isolated topological milestone pathways. Query messy multi-file infrastructures in an immutable, entirely read-only sandbox.",
-    icon: <Map className="h-4 w-4 text-white" strokeWidth={1.5} />,
+    icon: <Terminal className="h-4 w-4 text-white" strokeWidth={1.5} />,
     colSpan: "md:col-span-3",
     visual: <PlanAskVisual />,
   },

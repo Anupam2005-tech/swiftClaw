@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Check, Terminal, Settings2 } from "lucide-react";
+import { Copy, Check, Terminal } from "lucide-react";
 import { ScrollReveal, ScrollSection } from "@/components/landing/scroll-reveal";
 import { cn } from "@/lib/utils";
 import {
@@ -64,7 +64,7 @@ export function WhatIsSection() {
         {/* Core Headline Matrix */}
         <ScrollReveal className="max-w-4xl mb-24 relative">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 rounded-full border border-[#FFFDF9]/10 bg-[#FFFDF9]/[0.02] backdrop-blur-md">
-            <Settings2 className="w-3.5 h-3.5 text-[#FFFDF9]" />
+            <Terminal className="w-3.5 h-3.5 text-[#FFFDF9]" />
             <span className="font-mono text-[10px] font-normal tracking-widest text-[#FFFDF9]/70 uppercase">Execution Model</span>
           </div>
           <h2 className="font-display text-5xl sm:text-6xl lg:text-7xl font-light tracking-tighter text-[#FFFDF9] mb-8 leading-[1.1]">

@@ -19,16 +19,38 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "swiftClaw — Code like a god. Supervise like a boss.",
+  title: "swiftClaw — AI Terminal Companion",
   description:
-    "Premium AI terminal companion with zero-trust staging, Agent/Plan/Ask modes, and Telegram remote approval.",
+    "Premium AI terminal companion with zero-trust staging, Agent/Plan/Ask modes, and Telegram remote approval. Install via npm, Docker, or Homebrew.",
+  keywords: ["AI", "terminal", "CLI", "developer tools", "zero-trust", "agent", "open source"],
+  authors: [{ name: "anupam", url: "https://github.com/anupam" }],
+  creator: "anupam",
+  publisher: "swiftClaw",
+  metadataBase: new URL("https://swiftclaw.online"),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "swiftClaw",
+    title: "swiftClaw — AI Terminal Companion",
     description:
-      "AI-powered terminal companion with human-in-the-loop staging. Install via npm, pnpm, bun, or curl.",
+      "AI-powered terminal companion with human-in-the-loop staging for secure AI agent collaboration.",
     url: "https://swiftclaw.online",
     siteName: "swiftClaw",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "swiftClaw — AI Terminal Companion",
+    description:
+      "Premium AI agent with zero-trust staging, Agent/Plan/Ask modes, and remote terminal access.",
+  },
+  icons: {
+    icon: "/favicon.svg",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
@@ -39,7 +61,32 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${montserrat.variable} dark`}>
-      <body className="relative min-h-screen bg-sc-canvas font-body text-sc-text">
+      <body className="relative min-h-screen bg-sc-canvas font-body text-sc-text" suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: "document.addEventListener('contextmenu',e=>e.preventDefault())" }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: "swiftClaw",
+              description:
+                "Premium AI terminal companion with zero-trust staging, Agent/Plan/Ask modes, and Telegram remote approval.",
+              applicationCategory: "DeveloperApplication",
+              operatingSystem: "Linux, macOS, Windows",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+              author: {
+                "@type": "Person",
+                name: "anupam",
+              },
+              url: "https://swiftclaw.online",
+            }),
+          }}
+        />
         <VerticalMetadata />
         <GlobalBackground />
         <RecaptchaBadge />

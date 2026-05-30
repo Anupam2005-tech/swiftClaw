@@ -13,7 +13,7 @@ const FAQ_ITEMS = [
   },
   { 
     id: "02",
-    q: "Why should I use this over [Insert Generic AI]?", 
+    q: "Why should I use this over any other open source AI tools?", 
     a: "Because we don't treat you like a toddler. You are the dictator; the AI is your swarm. Complete architectural control, isolated staging, and absolutely zero auto-deploy jumpscares." 
   },
   { 

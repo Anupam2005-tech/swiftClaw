@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const LoadingScreen = lazy(() =>
@@ -8,11 +8,12 @@ const LoadingScreen = lazy(() =>
 );
 
 export function LoadingWrapper({ children }: { children: React.ReactNode }) {
-  const [phase, setPhase] = useState<"loading" | "ready">(
-    typeof window !== "undefined" && !sessionStorage.getItem("swiftclaw_has_visited")
-      ? "loading"
-      : "ready"
-  );
+  const [phase, setPhase] = useState<"loading" | "ready">("loading");
+
+  useEffect(() => {
+    const hasVisited = sessionStorage.getItem("swiftclaw_has_visited");
+    if (hasVisited) setPhase("ready");
+  }, []);
 
   const handleFinish = () => {
     sessionStorage.setItem("swiftclaw_has_visited", "true");
