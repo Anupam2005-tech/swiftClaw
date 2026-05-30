@@ -10,16 +10,23 @@ permissions:
   packages: write
   id-token: write
 
+# 🌟 OPTS INTO NODE 24 RUNTIME: Clears platform deprecation warnings globally
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
-  # ── Sync version from tag ───────────────────────────────────────────
+  # ── Sync version and repo name ──────────────────────────────────────────
   version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
+      repo_lowercase: ${{ steps.v.outputs.repo_lowercase }}
     steps:
       - uses: actions/checkout@v4
       - id: v
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "repo_lowercase=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
   # ── Publish to npm ──────────────────────────────────────────────────
   npm-publish:
@@ -32,7 +39,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          npm version ${{ needs.version.outputs.version }} --no-git-tag-version
+          # 🌟 FIX: Added --ignore-scripts to stop 'postversion' git push crashes on detached HEAD
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run build
       - run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
@@ -51,8 +59,12 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          npm version ${{ needs.version.outputs.version }} --no-git-tag-version
+          # 🌟 FIX: Added --ignore-scripts to stop 'postversion' git push crashes on detached HEAD
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run scripts/compile.ts
+          if [ ! -f dist/bin/SHA256SUMS.txt ]; then
+            cd dist/bin && sha256sum * > SHA256SUMS.txt || true
+          fi
       - name: Upload binaries as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -72,7 +84,11 @@ jobs:
         id: checksums
         run: |
           echo "sha256<<EOF" >> "$GITHUB_OUTPUT"
-          cat dist/bin/SHA256SUMS.txt >> "$GITHUB_OUTPUT"
+          if [ -f dist/bin/SHA256SUMS.txt ]; then
+            cat dist/bin/SHA256SUMS.txt >> "$GITHUB_OUTPUT"
+          else
+            echo "No checksum file generated." >> "$GITHUB_OUTPUT"
+          fi
           echo "EOF" >> "$GITHUB_OUTPUT"
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -99,7 +115,7 @@ jobs:
 
             ### Docker
             ```sh
-            docker pull ghcr.io/${{ github.repository }}:v${{ needs.version.outputs.version }}
+            docker pull ghcr.io/${{ needs.version.outputs.repo_lowercase }}:v${{ needs.version.outputs.version }}
             ```
 
             ### npm
@@ -128,8 +144,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:v${{ needs.version.outputs.version }}
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ needs.version.outputs.repo_lowercase }}:v${{ needs.version.outputs.version }}
+            ghcr.io/${{ needs.version.outputs.repo_lowercase }}:latest
           labels: |
             org.opencontainers.image.version=${{ needs.version.outputs.version }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
