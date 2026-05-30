@@ -10,6 +10,7 @@ permissions:
   packages: write
   id-token: write
 
+# 🌟 OPTS INTO NODE 24 RUNTIME: Clears platform deprecation warnings globally
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
@@ -38,7 +39,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version
+          # 🌟 FIX: Added --ignore-scripts to stop 'postversion' git push crashes on detached HEAD
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run build
       - run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
@@ -57,7 +59,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version
+          # 🌟 FIX: Added --ignore-scripts to stop 'postversion' git push crashes on detached HEAD
+          npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run scripts/compile.ts
           if [ ! -f dist/bin/SHA256SUMS.txt ]; then
             cd dist/bin && sha256sum * > SHA256SUMS.txt || true
