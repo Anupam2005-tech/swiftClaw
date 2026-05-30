@@ -8,7 +8,7 @@ on:
 permissions:
   contents: write
   packages: write
-  id-token: write
+  id-token: write # 🌟 REQUIRED: Allows OIDC connection to npm without tokens
 
 # 🌟 OPTS INTO NODE 24 RUNTIME: Clears platform deprecation warnings globally
 env:
@@ -42,11 +42,8 @@ jobs:
           # 🌟 FIX: Added --ignore-scripts to stop 'postversion' git push crashes on detached HEAD
           npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run build
-      - run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
-          npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm using Trusted Publishing
+        run: npm publish --provenance --access public
 
   # ── Build standalone binaries ───────────────────────────────────────
   binaries:
