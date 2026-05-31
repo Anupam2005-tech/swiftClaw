@@ -1,14 +1,14 @@
 {
   "name": "swiftclaw",
-  "version": "1.0.6",
+  "version": "1.0.1",
   "description": "AI agent and terminal companion tool",
   "homepage": "https://swiftclaw.online",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anupam/swiftClaw.git"
+    "url": "git+https://github.com/Anupam2005-tech/swiftClaw.git"
   },
   "bugs": {
-    "url": "https://github.com/anupam/swiftClaw/issues"
+    "url": "https://github.com/Anupam2005-tech/swiftClaw/issues"
   },
   "keywords": ["ai", "cli", "terminal", "agent", "copilot", "developer-tools"],
   "type": "module",
