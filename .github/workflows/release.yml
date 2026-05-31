@@ -43,7 +43,9 @@ jobs:
           npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run build
       - name: Publish to npm (OIDC Trusted Publishing)
-        run: npm publish --provenance --access public
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
