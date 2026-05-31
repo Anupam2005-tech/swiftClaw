@@ -5,12 +5,6 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-  packages: write
-  id-token: write
-
-# 🌟 OPTS INTO NODE 24 RUNTIME: Clears platform deprecation warnings globally
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
@@ -28,22 +22,29 @@ jobs:
           echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           echo "repo_lowercase=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-  # ── Publish to npm ──────────────────────────────────────────────────
+  # ── Publish to npm via OIDC Trusted Publishing ──────────────────────────
   npm-publish:
     needs: version
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          # 🌟 FIX: Added --ignore-scripts to stop 'postversion' git push crashes on detached HEAD
           npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run build
-      - run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+      - name: Publish to npm (OIDC Trusted Publishing)
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
           npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -52,6 +53,8 @@ jobs:
   binaries:
     needs: version
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -59,7 +62,6 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: |
-          # 🌟 FIX: Added --ignore-scripts to stop 'postversion' git push crashes on detached HEAD
           npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version --ignore-scripts
           bun run scripts/compile.ts
           if [ ! -f dist/bin/SHA256SUMS.txt ]; then
@@ -75,6 +77,8 @@ jobs:
   release:
     needs: [version, binaries]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -109,9 +113,8 @@ jobs:
             | Windows | x64 | `swiftclaw-windows-x64.exe` |
 
             ### SHA256 Checksums
-            ```
+
             ${{ steps.checksums.outputs.sha256 }}
-            ```
 
             ### Docker
             ```sh
@@ -130,6 +133,9 @@ jobs:
   docker:
     needs: version
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GitHub Container Registry
