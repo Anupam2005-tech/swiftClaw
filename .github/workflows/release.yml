@@ -115,14 +115,14 @@ jobs:
             ${{ steps.checksums.outputs.sha256 }}
 
             ### Docker
-```sh
+            ```sh
             docker pull ghcr.io/${{ needs.version.outputs.repo_lowercase }}:v${{ needs.version.outputs.version }}
-```
+            ```
 
             ### npm
-```sh
+            ```sh
             npm install -g swiftclaw
-```
+            ```
           files: dist/bin/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
