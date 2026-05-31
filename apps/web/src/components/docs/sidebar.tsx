@@ -7,17 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  BookOpen,
   Download,
-  Settings2,
   Terminal,
-  Code2,
-  MessageCircle,
-  Cpu,
-  TerminalSquare,
-  Command,
-  AppWindow,
-  HardDrive,
   Blocks,
   Network,
   Mic,
@@ -37,6 +28,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 
+import { CORE_LINKS, INSTALL_LINKS } from "@/lib/docs-links";
+
 // --- ANIMATION VARIANTS ---
 
 const sidebarVariants = {
@@ -54,26 +47,6 @@ const textVariants = {
   closed: { opacity: 0, transition: { duration: 0.1 }, transitionEnd: { display: "none" } },
 };
 
-// --- DATA STRUCTURES ---
-
-const CORE_LINKS = [
-  { label: "Introduction", href: "/docs/intro", icon: BookOpen, keywords: "getting started readme welcome overview" },
-  { label: "Configuration", href: "/docs/config", icon: Settings2, keywords: "env setup keys options production development variables" },
-  { label: "CLI Reference", href: "/docs/cli", icon: Terminal, keywords: "commands execute lines flags terminal script run" },
-  { label: "IDE & editors", href: "/docs/ide", icon: Code2, keywords: "vscode cursor terminal editor integrated" },
-  { label: "Telegram Gateway", href: "/docs/telegram", icon: MessageCircle, keywords: "bot notification webhooks client channels streams messaging" },
-  { label: "Agent Skills", href: "/docs/skills", icon: Cpu, badge: "ACTIVE", keywords: "crewai models tools intelligence multi-agent execution LLM" },
-];
-
-const INSTALL_LINKS = [
-  { label: "CMD / One-Liner", href: "/docs/install/cmd", icon: TerminalSquare, keywords: "installation shell curl bash terminal direct setup fast mac linux" },
-  { label: "npm / pnpm / bun", href: "/docs/install/npm", icon: Blocks, keywords: "npm pnpm bun node package manager global install registry" },
-  { label: "Docker", href: "/docs/install/docker", icon: TerminalSquare, keywords: "container docker ghcr.io image pull containerized" },
-  { label: "macOS", href: "/docs/install/mac", icon: Command, keywords: "apple silicon intel arm64 binary manual" },
-  { label: "Windows", href: "/docs/install/windows", icon: AppWindow, keywords: "microsoft powershell exe installation" },
-  { label: "Linux", href: "/docs/install/debian", icon: HardDrive, keywords: "linux ubuntu debian fedora arch binary apt" },
-];
-
 const FUTURE_LINKS = [
   { label: "MCP Integration", icon: Blocks, keywords: "model context protocol framework structural server extension lock future" },
   { label: "Workspace Sync", icon: Network, keywords: "cloud synchronization multi-device backup cluster remote dynamic pipeline" },
@@ -82,12 +55,20 @@ const FUTURE_LINKS = [
   { label: "Image Vision", icon: ImageIcon, keywords: "upscaling models generation 4k processing generation digital asset canvas" },
 ];
 
-export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+interface SidebarProps {
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean) => void;
+}
+
+export function Sidebar({ isCollapsed: externalCollapsed, setIsCollapsed: externalSetCollapsed }: SidebarProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
+  const isCollapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
+  const setIsCollapsed = externalSetCollapsed !== undefined ? externalSetCollapsed : setInternalCollapsed;
+
   const pathname = usePathname();
   const router = useRouter();
 

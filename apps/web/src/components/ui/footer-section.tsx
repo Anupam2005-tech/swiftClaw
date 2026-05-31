@@ -110,6 +110,7 @@ export function Footer() {
             </ul>
           </motion.div>
         </div>
+        
 
         {/* Technical Data Tags */}
         <div className="w-full flex justify-between border-b-[0.5px] border-[#FFFDF9]/10 pb-8 mb-8 pointer-events-none select-none">

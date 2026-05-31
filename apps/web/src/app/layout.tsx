@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import dynamic from "next/dynamic";
+import { CustomCursor } from "@/components/ui/cursor";
 
 const GlobalBackground = dynamic(
   () => import("@/components/ui/background-components").then((m) => m.GlobalBackground)
@@ -89,6 +90,7 @@ export default function RootLayout({
         />
         <VerticalMetadata />
         <GlobalBackground />
+        <CustomCursor />
         <RecaptchaBadge />
         <div className="relative z-10 flex min-h-screen flex-col">
           <main className="flex-1">{children}</main>

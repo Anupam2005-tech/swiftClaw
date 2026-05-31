@@ -1,9 +1,12 @@
 "use client";
 
-import React from "react";
-
-import {Sidebar}  from "./sidebar";
+import React, { useState, useEffect } from "react";
+import { Sidebar } from "./sidebar";
+import { DocPagination } from "./pagination";
 import { motion } from "framer-motion";
+import { Menu, X, Terminal } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 interface DocsLayoutProps {
   children: React.ReactNode;
 }
@@ -31,6 +34,21 @@ const PixelHeart = () => (
 );
 
 export default function DocsLayout({ children }: DocsLayoutProps) {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsCollapsed(true);
+      } else {
+        setIsCollapsed(false);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div className="relative flex min-h-screen w-full bg-[#000000] text-[#FFFDF9] antialiased selection:bg-[#FFFDF9] selection:text-black">
       
@@ -41,20 +59,38 @@ export default function DocsLayout({ children }: DocsLayoutProps) {
       {/* Subtle top horizontal engine path line */}
       <div className="absolute top-0 right-0 left-14 h-px bg-gradient-to-r from-[#FFFDF9]/15 via-[#FFFDF9]/5 to-transparent pointer-events-none z-10" />
 
+      {/* --- MOBILE HEADER --- */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 z-[1000] border-b border-[#FFFDF9]/10 bg-[#050505]/80 backdrop-blur-md flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)} 
+            className="p-2 rounded-md border border-[#FFFDF9]/10 bg-[#FFFDF9]/5 text-[#FFFDF9] hover:bg-[#FFFDF9]/10 transition-colors"
+          >
+            {isCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
+          </button>
+          <div className="flex items-center gap-2">
+            <Terminal className="h-5 w-5 text-[#FFFDF9]" />
+            <span className="font-display font-black tracking-widest text-[#FFFDF9] text-sm">swiftClaw</span>
+          </div>
+        </div>
+      </div>
+
       {/* --- YOUR SIDEBAR WORKSPACE NAVIGATION --- */}
-      <Sidebar />
+      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
       {/* --- DYNAMIC CONTENT VIEWPORT CONTAINER --- */}
-      {/* pl-14 handles your standard collapsed sidebar width (3.5rem / 56px) 
-          so your text content sits cleanly flush with its right edge.
-      */}
-      <div className="flex-1 min-w-0 pl-14 transition-all duration-300 ease-in-out relative z-10 flex flex-col">
+      <div className={cn(
+        "flex-1 min-w-0 transition-all duration-300 ease-in-out relative z-10 flex flex-col",
+        "pt-16 lg:pt-0",
+        isCollapsed ? "pl-0 lg:pl-14" : "pl-0 lg:pl-64"
+      )}>
         
         {/* Main Documentation Content Slot */}
         <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-12 sm:px-12 lg:px-16 lg:py-20 flex flex-col justify-between">
           
           <div className="w-full">
             {children}
+            <DocPagination />
           </div>
 
           {/* --- MINIMAL TECHNICAL FOOTER CONSOLE --- */}

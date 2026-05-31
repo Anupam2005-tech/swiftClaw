@@ -1,17 +1,15 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/landing/scroll-reveal";
-import { 
-  HelpCircle, 
-  ArrowRight, 
-  Zap, 
-  Shield, 
-  Terminal, 
-  Code,
-  Settings2,
-  Cpu
-} from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
+
+const smoothEasing = [0.22, 1, 0.36, 1] as const;
 
 export default function FAQPage() {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   const faqs = [
     {
       question: "What makes swiftClaw different from other terminal agents?",
@@ -39,45 +37,139 @@ export default function FAQPage() {
     },
     {
       question: "What are the system requirements for running swiftClaw?",
-      answer: "swiftClaw requires Node.js 18+ or Bun 1.0+ for the CLI, and runs on Windows, macOS, and Linux. For the full experience, we recommend 8GB RAM minimum and a modern multi-core processor. The sandboxed runtime is designed to be lightweight and efficient.",
-      },
+      answer: "swiftClaw requires Node.js 18+ or Bun 1.0+ for the CLI, and runs on Windows, macOS, and Linux. For the full experience, we recommend 8GB RAM minimum and a modern multi-core processor. The sandboxed runtime is designed to be lightweight and efficient."
+    },
     {
       question: "How do I contribute to the swiftClaw project?",
       answer: "We welcome contributions! Check out our GitHub repository for contribution guidelines. You can contribute through code improvements, documentation, skill development, or community support. All contributions go through our standard pull request review process."
     }
   ];
 
+  const toggleFAQ = (index: number) => {
+    setActiveIndex(activeIndex === index ? null : index);
+  };
+
+  const cn = (...inputs: any[]) => inputs.filter(Boolean).join(" ");
   return (
-    <ScrollReveal className="space-y-8 selection:bg-[#FFFDF9] selection:text-black">
-      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#FFFDF9]/40 select-none pointer-events-none">
-        <span>Core</span>
-        <ArrowRight className="h-3 w-3 opacity-30" />
-        <span className="text-[#FFFDF9]/80">Frequently Asked Questions</span>
+    <>
+      {/* PREMIUM BACKGROUND 
+        Pitch black base with a subtle cream-white (#FAF9F6) grid.
+        Uses a radial gradient mask to fade the grid out beautifully at the edges.
+      */}
+      <div className="fixed inset-0 -z-10 bg-black">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#FAF9F608_1px,transparent_1px),linear-gradient(to_bottom,#FAF9F608_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_30%,#000_40%,transparent_100%)]"></div>
       </div>
 
-      <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tight text-[#FFFDF9] mb-6">
-        Common Questions.
-      </h1>
+      <div className="relative w-full min-h-screen bg-[#000000] text-[#FFFDF9] overflow-hidden isolate py-32 px-4 sm:px-6 lg:px-8 pt-[60px]">
+        {/* ================= INTERACTIVE MAIN CANVAS ================= */}
+        <ScrollReveal className="relative z-10 w-full max-w-4xl mx-auto space-y-16">
+          
+          {/* Header Block with Anchor Crosshairs */}
+          <div className="relative space-y-4 pb-4">
+            {/* Subtle Corner Graphic Markers to anchor layout balance */}
+            <div className="absolute top-0 -left-6 font-mono text-[10px] text-white/30 sm:block hidden">+</div>
+            <div className="absolute top-0 -right-6 font-mono text-[10px] text-white/30 sm:block hidden">+</div>
 
-      <div className="space-y-6">
-        {faqs.map((faq, index) => (
-          <div key={index} className="border border-[#FFFDF9]/10 rounded-xl overflow-hidden group">
-            <div className="flex items-center justify-between px-6 py-4 font-mono text-[10px] uppercase tracking-[0.2em] text-[#FFFDF9]/40 select-none pointer-events-none bg-[#0A0A0A]/20">
-              <span>{faq.question}</span>
-              <HelpCircle className="h-4 w-4 text-[#FFFDF9]/60 group-hover:text-[#FFFDF9] transition-colors duration-300" />
+            {/* Nav Indicator */}
+            <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.3em] text-white/40">
+              <span>Core</span>
+              <ArrowRight className="h-2.5 w-2.5 opacity-40 text-white" />
+              <span className="text-white/80">System Documentation</span>
             </div>
-            <div className="px-6 py-4 text-[#FFFDF9]/60 font-body text-sm leading-relaxed">
-              {faq.answer}
+
+            {/* Typography Grid */}
+            <div className="space-y-2">
+              <h1 className="font-display text-4xl sm:text-5xl font-extralight tracking-tight text-white">
+                Common <span className="font-medium text-white">Questions.</span>
+              </h1>
+              <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-white/30">
+                // INDEX_ID: 0x98A12F // VERSION 2.0
+              </p>
             </div>
           </div>
-        ))}
-      </div>
 
-      <blockquote className="border-l border-[#FFFDF9]/30 bg-[#FFFDF9]/[0.02] p-4 rounded-r-xl mt-8">
-        <p className="font-body text-xs font-light italic leading-relaxed text-[#FFFDF9]/60">
-          &quot;Still have questions? Reach out to our community on GitHub Discussions or join our Telegram channel for real-time support from the swiftClaw team and fellow developers.&quot;
-        </p>
-      </blockquote>
-    </ScrollReveal>
+          {/* Dynamic Accordion System */}
+          <div className="border-t border-white/10 divide-y divide-white/10">
+            {faqs.map((faq, index) => {
+              const isOpen = activeIndex === index;
+              return (
+                <div key={index} className="group relative transition-all duration-300">
+                  
+                  {/* Master Accordion Row Trigger */}
+                  <button
+                    onClick={() => toggleFAQ(index)}
+                    className="flex w-full items-start justify-between gap-6 py-7 text-left outline-none cursor-pointer group"
+                  >
+                    {/* Perfect Column Alignment Frame */}
+                    <div className="flex items-start flex-1 min-w-0">
+                      
+                      {/* Fixed Structural Left Column (Guarantees X-Alignment) */}
+                      <span className="font-mono text-xs text-white/30 w-12 shrink-0 pt-0.5 select-none transition-colors duration-300 group-hover:text-white/80 tabular-nums">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      
+                      {/* Main Flow Right Column */}
+                      <span className={cn(
+                        "font-display text-base sm:text-lg tracking-tight pr-4 transition-colors duration-300 flex-1",
+                        isOpen ? "text-white font-normal" : "text-white/60 group-hover:text-white"
+                      )}>
+                        {faq.question}
+                      </span>
+                    </div>
+
+                    {/* Micro-Interaction Mechanical Node */}
+                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.01] group-hover:border-white/40 group-hover:bg-white/[0.03] transition-all duration-300">
+                      <motion.div
+                        animate={{ rotate: isOpen ? 135 : 0 }}
+                        transition={{ duration: 0.35, ease: smoothEasing }}
+                      >
+                        <Plus className={cn("h-3.5 w-3.5 transition-colors duration-300", isOpen ? "text-white" : "text-white/40 group-hover:text-white")} />
+                      </motion.div>
+                    </div>
+                  </button>
+
+                  {/* Animated Drawer Body */}
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ 
+                          height: "auto", 
+                          opacity: 1,
+                          transition: { height: { duration: 0.4, ease: smoothEasing }, opacity: { duration: 0.25, delay: 0.05 } }
+                        }}
+                        exit={{ 
+                          height: 0, 
+                          opacity: 0,
+                          transition: { height: { duration: 0.35, ease: smoothEasing }, opacity: { duration: 0.15 } }
+                        }}
+                        className="overflow-hidden"
+                      >
+                        {/* Left Padding matches structural width (w-12) to lock alignment grid line */}
+                        <div className="pl-12 pr-12 pb-7 font-body text-sm sm:text-base text-white/50 font-light leading-relaxed tracking-wide max-w-3xl">
+                          {faq.answer}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Geometric Callout Module */}
+          <blockquote className="relative border-l border-white/30 bg-gradient-to-r from-white/[0.01] to-transparent p-6 rounded-r-xl mt-12 overflow-hidden">
+            {/* Accent graphic border strip */}
+            <div className="absolute top-0 bottom-0 left-0 w-[1px] bg-gradient-to-b from-white/40 via-white/10 to-transparent" />
+            <div className="absolute top-0 right-0 p-3 font-mono text-[7px] uppercase tracking-[0.2em] text-white/10 select-none">
+              // CONTEXT_ROUTING
+            </div>
+            <p className="font-body text-xs font-light italic leading-relaxed text-white/50 max-w-2xl">
+              &quot;Still have questions? Reach out to our community on GitHub Discussions or join our Telegram channel for real-time support from the swiftClaw team and fellow developers.&quot;
+            </p>
+          </blockquote>
+        </ScrollReveal>
+      </div>
+    </>
   );
 }
