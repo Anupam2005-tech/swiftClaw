@@ -1,0 +1,50 @@
+{
+  "gemini:gemini-2.0-flash": {
+    "supports_tools": true,
+    "supports_vision": true,
+    "supports_streaming": true,
+    "max_context_tokens": 1048576,
+    "supports_image_gen": false,
+    "supports_video_gen": false
+  },
+  "claude:claude-3-5-sonnet-latest": {
+    "supports_tools": true,
+    "supports_vision": true,
+    "supports_streaming": true,
+    "max_context_tokens": 200000,
+    "supports_image_gen": false,
+    "supports_video_gen": false
+  },
+  "openai:gpt-4o": {
+    "supports_tools": true,
+    "supports_vision": true,
+    "supports_streaming": true,
+    "max_context_tokens": 128000,
+    "supports_image_gen": false,
+    "supports_video_gen": false
+  },
+  "groq:llama-3.1-8b-instant": {
+    "supports_tools": true,
+    "supports_vision": false,
+    "supports_streaming": true,
+    "max_context_tokens": 131072,
+    "supports_image_gen": false,
+    "supports_video_gen": false
+  },
+  "groq:llama-3.1-70b-versatile": {
+    "supports_tools": true,
+    "supports_vision": false,
+    "supports_streaming": true,
+    "max_context_tokens": 131072,
+    "supports_image_gen": false,
+    "supports_video_gen": false
+  },
+  "perplexity:sonar": {
+    "supports_tools": false,
+    "supports_vision": false,
+    "supports_streaming": true,
+    "max_context_tokens": 127000,
+    "supports_image_gen": false,
+    "supports_video_gen": false
+  }
+}
