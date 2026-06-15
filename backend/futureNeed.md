@@ -1,0 +1,4 @@
+1. also dont forget to create seperate commands for user so that they can use those to change there preferances. like if they need to add something in memory they will give /memory if they need to edit there names or proffestionals  they have to write /profile nad then change them. this should be for all features which they can use
+
+
+2. from only optioning ui chnge it to messaging ui . like in normal agents happen. a input box should be there after the user starts the swiftClaw where he can change give the prompts directly . there will have shortcuts to change between plan/ask/agent mode. there will have suggetions for the user auto comming like which cmd they want to use on basis of inputing . shortcut to see all cmds they can use etc
