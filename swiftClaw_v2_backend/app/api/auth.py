@@ -79,3 +79,57 @@ def logout_all(current_user: dict = Depends(get_current_user)):
     uid = current_user["uid"]
     delete_all_sessions(uid)
     firebase_auth.revoke_refresh_tokens(uid)
+
+class SessionInfoResponse(BaseModel):
+    session_id: str
+    device_info: str
+    created_at: str
+    expires_at: str
+    last_active: str
+    is_current: bool
+
+from typing import List
+
+@router.get("/sessions", response_model=List[SessionInfoResponse])
+def get_user_sessions(
+    current_user: dict = Depends(get_current_user)
+):
+    """Lists all active sessions for the user."""
+    uid = current_user["uid"]
+    current_sess_id = current_user["session_id"]
+    
+    sessions_ref = db.collection("users").document(uid).collection("sessions").stream()
+    sessions = []
+    
+    for s in sessions_ref:
+        data = s.to_dict()
+        
+        # Format datetimes
+        created_at_val = data.get("created_at")
+        expires_at_val = data.get("expires_at")
+        last_active_val = data.get("last_active")
+        
+        created_at_str = created_at_val.isoformat() if isinstance(created_at_val, datetime) else str(created_at_val)
+        expires_at_str = expires_at_val.isoformat() if isinstance(expires_at_val, datetime) else str(expires_at_val)
+        last_active_str = last_active_val.isoformat() if isinstance(last_active_val, datetime) else str(last_active_val)
+        
+        sessions.append(SessionInfoResponse(
+            session_id=s.id,
+            device_info=data.get("device_info", "Unknown"),
+            created_at=created_at_str,
+            expires_at=expires_at_str,
+            last_active=last_active_str,
+            is_current=(s.id == current_sess_id)
+        ))
+        
+    return sessions
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_user_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Revokes a specific session for the user."""
+    uid = current_user["uid"]
+    delete_session(uid, session_id)
+

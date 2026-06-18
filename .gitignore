@@ -6,7 +6,15 @@ dist/
 wheels/
 *.egg-info
 
+# Node / Frontend-generated files
+node_modules/
+**/node_modules/
+.next/
+out/
+.env
+.env.*
+*.local
+swiftclaw-72966-firebase-adminsdk-fbsvc-d633bc5df3.json
+
 # Virtual environments
 .venv
-.env
-swiftclaw-72966-firebase-adminsdk-fbsvc-d633bc5df3.json

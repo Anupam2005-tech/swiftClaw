@@ -106,6 +106,22 @@ def get_adapter(provider: str, api_key: str, model: str) -> ModelAdapter:
         from langchain_openai import ChatOpenAI
         # Perplexity is OpenAI-compatible
         llm = ChatOpenAI(model=model, api_key=api_key, base_url="https://api.perplexity.ai")
+    elif provider == "openrouter":
+        from langchain_openai import ChatOpenAI
+        # OpenRouter is OpenAI-compatible
+        llm = ChatOpenAI(
+            model=model,
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                "HTTP-Referer": "https://swiftclaw.online",
+                "X-Title": "SwiftClaw",
+            },
+        )
+    elif provider == "nvidia":
+        from langchain_openai import ChatOpenAI
+        # NVIDIA NIM is OpenAI-compatible
+        llm = ChatOpenAI(model=model, api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
     else:
         raise ProviderError(code="unsupported_capability", retryable=False, message=f"Unsupported provider: {provider}")
         

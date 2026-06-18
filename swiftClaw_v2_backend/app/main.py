@@ -13,6 +13,7 @@ from app.api.onboarding import router as onboarding_router
 
 from app.config import settings
 from app.middleware.logging import setup_logging
+from app.db.firestore import FirestoreUnavailableError
 
 # Setup structlog
 setup_logging(json_logs=not settings.debug)
@@ -47,10 +48,19 @@ app = FastAPI(title="SwiftClaw API", version="1.0.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Firestore unavailable handler
+@app.exception_handler(FirestoreUnavailableError)
+async def firestore_unavailable_handler(request: Request, exc: FirestoreUnavailableError):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=503,
+        content={"detail": {"code": "database_unavailable", "message": str(exc)}}
+    )
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"] if settings.debug else ["https://swiftclaw.online"], # Explicit origins required when credentials=True
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080", "https://swiftclaw.online"], # Explicit origins required when credentials=True
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,7 +72,16 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    # Allow Firebase auth popup and Google APIs for authentication
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "connect-src 'self' https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com "
+        "https://swiftclaw-72966.firebaseio.com https://firestore.googleapis.com; "
+        "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://swiftclaw-72966.firebaseapp.com; "
+        "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com;"
+    )
     return response
 
 @app.get("/health")
