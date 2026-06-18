@@ -24,7 +24,7 @@ export default function ApiKeysSettingsPage() {
         </div>
         
         {/* Add key action */}
-        <ApiKeyForm onAddKey={addKey} existingKeys={existingKeys} />
+        <ApiKeyForm onAddKey={addKey} existingKeys={existingKeys} loading={loading} />
       </div>
 
       {/* Keys List grid */}

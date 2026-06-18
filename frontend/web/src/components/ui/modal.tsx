@@ -56,7 +56,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           />
 
           {/* Modal/Drawer Container */}
-          <div className="fixed inset-0 z-[10000] flex items-end justify-center md:items-center p-0 md:p-4 pointer-events-none">
+          <div className="fixed inset-x-0 bottom-0 md:inset-0 z-[10000] flex items-end justify-center md:items-center p-0 md:p-4 pointer-events-none">
             <motion.div
               key="modal-content"
               initial={{ y: "100%", opacity: 0 }}

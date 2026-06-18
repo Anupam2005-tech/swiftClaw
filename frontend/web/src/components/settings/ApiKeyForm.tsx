@@ -17,9 +17,10 @@ interface ApiKeyFormProps {
   existingKeys: ProviderId[];
   initialProvider?: ProviderId | null;
   onClose?: () => void;
+  loading?: boolean;
 }
 
-export function ApiKeyForm({ onAddKey, existingKeys, initialProvider, onClose }: ApiKeyFormProps) {
+export function ApiKeyForm({ onAddKey, existingKeys, initialProvider, onClose, loading = false }: ApiKeyFormProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(!!initialProvider);
   const [provider, setProvider] = useState<ProviderId>(initialProvider || getDefaultProvider());
@@ -95,7 +96,7 @@ export function ApiKeyForm({ onAddKey, existingKeys, initialProvider, onClose }:
       {!initialProvider && (
         <Button
           onClick={handleOpen}
-          disabled={availableProviders.length === 0}
+          disabled={loading || availableProviders.length === 0}
           className="bg-sc-accent text-accent-foreground font-semibold flex items-center justify-center gap-2 cursor-pointer hover:bg-sc-accent/90 disabled:opacity-50 w-full md:w-auto"
         >
           <Plus className="h-4 w-4 shrink-0" />
@@ -129,7 +130,7 @@ export function ApiKeyForm({ onAddKey, existingKeys, initialProvider, onClose }:
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -4, scale: 0.95 }}
                       transition={{ duration: 0.12, ease: "easeOut" }}
-                      className="absolute z-[60] top-full mt-1 left-0 right-0 bg-[#0D0D0D] border border-white/10 rounded-lg shadow-xl overflow-hidden max-h-[180px] overflow-y-auto"
+                      className="relative md:absolute z-[60] mt-1 md:top-full left-0 right-0 bg-[#0D0D0D] border border-white/10 rounded-lg shadow-xl overflow-hidden max-h-[180px] overflow-y-auto"
                     >
                       {availableProviders.map((p) => (
                         <button
