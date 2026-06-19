@@ -1,19 +1,22 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Message } from "../../lib/types/conversation";
 import { FileAttachmentChip } from "./FileAttachmentChip";
 import { ToolCallIndicator } from "./ToolCallIndicator";
 import { SourcesPanel } from "./SourcesPanel";
 import { ImageMessage } from "./ImageMessage";
 import { VideoJobCard } from "./VideoJobCard";
-import { RefreshCw, AlertCircle, Terminal } from "lucide-react";
+import { RefreshCw, AlertCircle, Terminal, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useToast } from "../ui/toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MessageBubbleProps {
   message: Message;
   onRegenerate?: () => void;
+  isRegenerating?: boolean;
 }
 
 const STATUS_WORDS = ["Cooking", "Transforming", "Generating", "Processing", "Assembling", "Brewing"];
@@ -170,15 +173,41 @@ function BlinkingDots() {
   );
 }
 
-export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
+export function MessageBubble({ message, onRegenerate, isRegenerating = false }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const isStreaming = message.status === "streaming";
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!message.content) return;
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      toast({
+        title: "Copied!",
+        description: "Message content copied to clipboard.",
+        variant: "success",
+        duration: 2000,
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy text to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isLoading = !isUser && (isStreaming || isRegenerating) && !message.content;
 
   return (
-    <div className={cn(
-      "flex w-full px-4 md:px-6 py-3",
-      isUser ? "justify-end" : "justify-start"
-    )}>
+    <Skeleton name="message-bubble" loading={isLoading} animate="pulse">
+      <div className={cn(
+        "flex w-full px-4 md:px-6 py-2",
+        isUser ? "justify-end" : "justify-start"
+      )}>
       {/* AI: streaming, no content yet — show icon + typewriter status */}
       {!isUser && isStreaming && !message.content ? (
         <div className="flex items-center gap-2.5 select-none">
@@ -192,15 +221,15 @@ export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
         </div>
       ) : (
         <div className={cn(
-          "flex flex-col max-w-[85%] md:max-w-[75%] gap-1",
+          "flex flex-col max-w-[80%] md:max-w-[65%] gap-1",
           isUser ? "items-end" : "items-start"
         )}>
           {/* Bubble */}
           <div className={cn(
-            "rounded-2xl px-4 py-2.5 min-w-0 w-fit break-words",
+            "rounded-2xl px-5 py-3 min-w-0 w-fit break-words shadow-sm",
             isUser
               ? "bg-[var(--chat-bubble-user)] border border-white/5 rounded-br-sm"
-              : "bg-[var(--chat-bubble-assistant)] border border-white/5 rounded-bl-sm"
+              : "bg-[var(--chat-bubble-assistant)] border border-white/5 rounded-bl-sm ring-1 ring-white/[0.03]"
           )}>
             {isUser && message.attachments && message.attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
@@ -209,15 +238,15 @@ export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
                 ))}
               </div>
             )}
-
+ 
             {message.content && <FormattedContent content={message.content} />}
-
+ 
             {!isUser && isStreaming && message.content && (
               <span className="inline-flex ml-0.5">
                 <BlinkingDots />
               </span>
             )}
-
+ 
             {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
               <div className="flex flex-col gap-1 mt-2 border-t border-white/5 pt-2">
                 {message.tool_calls.map((tc) => (
@@ -225,25 +254,25 @@ export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
                 ))}
               </div>
             )}
-
+ 
             {!isUser && message.sources && message.sources.length > 0 && (
               <div className="mt-2 border-t border-white/5 pt-2">
                 <SourcesPanel sources={message.sources} />
               </div>
             )}
-
+ 
             {!isUser && message.image_url && (
               <div className="mt-2">
                 <ImageMessage imageUrl={message.image_url} />
               </div>
             )}
-
+ 
             {!isUser && message.media_job_id && (
               <div className="mt-2">
                 <VideoJobCard jobId={message.media_job_id} />
               </div>
             )}
-
+ 
             {!isUser && message.status === "interrupted" && (
               <div className="mt-3 p-3 rounded-lg border border-red-500/10 bg-red-950/10 text-xs flex items-center justify-between gap-3 select-none">
                 <div className="flex items-center gap-2 text-red-400">
@@ -262,7 +291,7 @@ export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
               </div>
             )}
           </div>
-
+ 
           {/* Footer */}
           <div className={cn(
             "flex items-center gap-2 px-1",
@@ -271,20 +300,41 @@ export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
             <span className="text-[9px] text-sc-text-muted/30 font-mono select-none">
               {formatTime(message.created_at)}
             </span>
-            {!isUser && message.provider && (
-              <span className="text-[8px] text-sc-text-muted/20 font-mono select-none">
-                {message.provider}
-              </span>
-            )}
-            {!isUser && message.tokens_used && (
-              <span className="text-[8px] text-sc-text-muted/20 font-mono select-none">
-                {message.tokens_used}t
-              </span>
+            {!isUser && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleCopy}
+                  className="p-1 rounded hover:bg-white/5 text-sc-text-muted hover:text-sc-text transition-colors cursor-pointer"
+                  title="Copy response"
+                >
+                  {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                </button>
+                {onRegenerate && !isStreaming && (
+                  <button
+                    onClick={onRegenerate}
+                    className="p-1 rounded hover:bg-white/5 text-sc-text-muted hover:text-sc-text transition-colors cursor-pointer"
+                    title="Regenerate response"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                  </button>
+                )}
+                {message.provider && (
+                  <span className="text-[8px] text-sc-text-muted/20 font-mono select-none ml-1">
+                    {message.provider}
+                  </span>
+                )}
+                {message.tokens_used && (
+                  <span className="text-[8px] text-sc-text-muted/20 font-mono select-none">
+                    {message.tokens_used}t
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
       )}
     </div>
+    </Skeleton>
   );
 }
 export default MessageBubble;

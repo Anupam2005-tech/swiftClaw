@@ -10,6 +10,8 @@ import { api } from "@/lib/api/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMobileSidebar } from "@/lib/contexts/SidebarContext";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import {
   Terminal,
   Settings,
@@ -27,10 +29,16 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const sidebarVariants = {
+const desktopSidebarVariants = {
   open: { width: 260 },
   closed: { width: 56 },
+};
+
+const mobileSidebarVariants = {
+  open: { x: 0 },
+  closed: { x: "-100%" },
 };
 
 const textVariants = {
@@ -42,6 +50,9 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const { isMobileSidebarOpen, closeMobileSidebar } = useMobileSidebar();
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,6 +81,16 @@ export function AppSidebar() {
     }
   }, [user, pathname]); // Re-fetch on pathname transition in case they updated settings!
 
+  React.useEffect(() => {
+    if (isMobile && isMobileSidebarOpen) {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") closeMobileSidebar();
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isMobile, isMobileSidebarOpen, closeMobileSidebar]);
+
   const displayName = profile?.nickname || (user?.email ? user.email.split("@")[0] : "");
   const userProfession = profile?.profession || "";
 
@@ -81,20 +102,32 @@ export function AppSidebar() {
     conversations,
     loading,
     createConversation,
-    deleteConversation,
+    refreshConversations,
   } = useConversations(activeConversationId);
+
+  // Re-fetch conversation list when ChatWindow dispatches update event
+  React.useEffect(() => {
+    const handler = () => refreshConversations();
+    window.addEventListener("conversations-updated", handler);
+    return () => window.removeEventListener("conversations-updated", handler);
+  }, [refreshConversations]);
 
   // Handle global keyboard shortcut (Cmd+K / Ctrl+K)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setSearchOpen((prev) => !prev);
+        if (isMobile) {
+          closeMobileSidebar();
+          router.push("/chat/browse");
+        } else {
+          setSearchOpen((prev) => !prev);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [closeMobileSidebar, isMobile, router]);
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
@@ -106,12 +139,37 @@ export function AppSidebar() {
     );
   }, [conversations, searchQuery]);
 
+  const handleNavigation = (id: string) => {
+    router.push(`/chat/${id}`);
+    if (isMobile) closeMobileSidebar();
+  };
+
+  const sidebarVariants = isMobile ? mobileSidebarVariants : desktopSidebarVariants;
+
   return (
     <>
-      <motion.aside
-        className="h-full shrink-0 border-r border-white/[0.04] bg-gradient-to-b from-[#09090C] via-[#050508] to-[#020204] flex flex-col z-20 overflow-hidden select-none shadow-2xl relative"
-        initial={collapsed ? "closed" : "open"}
-        animate={collapsed ? "closed" : "open"}
+      <AnimatePresence>
+        {isMobile && isMobileSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeMobileSidebar}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
+          />
+        )}
+      </AnimatePresence>
+
+      <Skeleton name="app-sidebar" loading={loading} animate="pulse" className="h-full shrink-0 flex flex-col">
+        <motion.aside
+        className={cn(
+          "h-full shrink-0 border-r border-white/[0.04] bg-gradient-to-b from-[#09090C] via-[#050508] to-[#020204] flex flex-col overflow-hidden select-none shadow-2xl relative transition-all",
+          isMobile 
+            ? "fixed inset-y-0 left-0 z-[100] w-[85vw] max-w-[320px]" 
+            : "z-20"
+        )}
+        initial={isMobile ? (isMobileSidebarOpen ? "open" : "closed") : (collapsed ? "closed" : "open")}
+        animate={isMobile ? (isMobileSidebarOpen ? "open" : "closed") : (collapsed ? "closed" : "open")}
         variants={sidebarVariants}
         transition={{ type: "spring", stiffness: 400, damping: 40 }}
       >
@@ -121,10 +179,12 @@ export function AppSidebar() {
         {/* HEADER */}
         <div className={cn(
           "flex h-14 shrink-0 items-center border-b border-white/[0.04] transition-all relative z-10",
-          collapsed ? "justify-center px-0" : "justify-between px-4"
+          (isMobile ? false : collapsed) ? "justify-center px-0" : "justify-between px-4"
         )}>
           <motion.div
-            variants={textVariants}
+            variants={isMobile ? undefined : textVariants}
+            initial={isMobile ? undefined : (collapsed ? "closed" : "open")}
+            animate={isMobile ? undefined : (collapsed ? "closed" : "open")}
             className="items-center gap-2.5 overflow-hidden whitespace-nowrap"
           >
             <div className="flex items-center gap-2.5">
@@ -134,18 +194,28 @@ export function AppSidebar() {
               </span>
             </div>
           </motion.div>
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-sc-text-muted hover:text-sc-text hover:border-white/20 transition-colors cursor-pointer"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <SidebarOpen className="h-3.5 w-3.5" /> : <SidebarClose className="h-3.5 w-3.5" />}
-          </button>
+          {!isMobile && (
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-sc-text-muted hover:text-sc-text hover:border-white/20 transition-colors cursor-pointer"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <SidebarOpen className="h-3.5 w-3.5" /> : <SidebarClose className="h-3.5 w-3.5" />}
+            </button>
+          )}
+          {isMobile && (
+            <button
+              onClick={closeMobileSidebar}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-sc-text-muted hover:text-sc-text hover:border-white/20 transition-colors cursor-pointer"
+            >
+              <SidebarClose className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         {/* NEW CHAT */}
-        <div className={cn("shrink-0 relative z-10", collapsed ? "p-2" : "p-4 pb-2")}>
-          {collapsed ? (
+        <div className={cn("shrink-0 relative z-10", (isMobile ? false : collapsed) ? "p-2" : "p-4 pb-2")}>
+          {(isMobile ? false : collapsed) ? (
             <TooltipProvider>
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
@@ -167,24 +237,33 @@ export function AppSidebar() {
         </div>
 
         {/* SEARCH ICON */}
-        <div className={cn("shrink-0", collapsed ? "px-2 pb-2" : "px-3 pb-2")}>
+        <div className={cn("shrink-0", (isMobile ? false : collapsed) ? "px-2 pb-2" : "px-3 pb-2")}>
           <TooltipProvider>
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => setSearchOpen(true)}
+                  onClick={() => {
+                    if (isMobile) {
+                      closeMobileSidebar();
+                      router.push("/chat/browse");
+                    } else {
+                      setSearchOpen(true);
+                    }
+                  }}
                   className={cn(
                     "flex items-center rounded-md border border-white/10 bg-white/[0.02] hover:bg-white/5 text-sc-text-muted hover:text-sc-text transition-all outline-none cursor-pointer",
-                    collapsed ? "h-8 w-8 justify-center" : "h-8 w-full px-2.5"
+                    (isMobile ? false : collapsed) ? "h-8 w-8 justify-center" : "h-8 w-full px-2.5"
                   )}
                 >
                   <Search className="h-3.5 w-3.5 shrink-0" />
-                  {!collapsed && (
+                  {!(isMobile ? false : collapsed) && (
                     <div className="flex flex-1 items-center justify-between ml-2.5 overflow-hidden">
                       <span className="text-[11px] text-sc-text-muted/40 font-medium truncate">Search...</span>
-                      <span className="font-mono text-[8px] px-1.5 py-0.5 rounded border border-white/10 bg-black/40 text-sc-text-muted/40 tracking-wider font-bold">
-                        ⌘K
-                      </span>
+                      {!isMobile && (
+                        <span className="font-mono text-[8px] px-1.5 py-0.5 rounded border border-white/10 bg-black/40 text-sc-text-muted/40 tracking-wider font-bold">
+                          ⌘K
+                        </span>
+                      )}
                     </div>
                   )}
                 </button>
@@ -198,21 +277,21 @@ export function AppSidebar() {
 
         {/* CONVERSATION LIST */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          {!collapsed && (
+          {(isMobile ? false : collapsed) === false && (
             <div className="px-4 mb-1 shrink-0">
               <span className="text-[9px] uppercase tracking-[0.2em] font-semibold text-sc-text-muted/40 select-none">
                 History
               </span>
             </div>
           )}
-          {collapsed ? (
+          {(isMobile ? false : collapsed) ? (
             <div className="flex flex-col items-center gap-2 px-2 pt-2">
               {conversations.slice(0, 8).map((conv) => (
                 <TooltipProvider key={conv.id}>
                   <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => router.push(`/chat/${conv.id}`)}
+                        onClick={() => handleNavigation(conv.id)}
                         className={cn(
                           "h-2 w-2 rounded-full transition-colors cursor-pointer",
                           conv.id === activeConversationId
@@ -235,7 +314,7 @@ export function AppSidebar() {
                   conversations={conversations}
                   loading={loading}
                   activeId={activeConversationId}
-                  onDelete={deleteConversation}
+                  onSelect={handleNavigation}
                 />
               </div>
             </ScrollArea>
@@ -244,43 +323,67 @@ export function AppSidebar() {
 
         {/* FOOTER */}
         <div className="shrink-0 border-t border-white/5 bg-black/20 p-2 space-y-0.5">
-          <TooltipProvider>
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => router.push("/settings/api-keys")}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md text-xs font-semibold text-sc-text-muted hover:bg-white/[0.02] hover:text-sc-text transition-colors cursor-pointer w-full text-left",
-                    collapsed && "justify-center px-0"
-                  )}
-                >
-                  <Settings className="h-4 w-4 shrink-0" />
-                  <motion.span variants={textVariants} className="overflow-hidden whitespace-nowrap">
+          {!isMobile && (
+            <TooltipProvider>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      router.push("/settings/api-keys");
+                      if (isMobile) closeMobileSidebar();
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md text-xs font-semibold text-sc-text-muted hover:bg-white/[0.02] hover:text-sc-text transition-colors cursor-pointer w-full text-left",
+                      collapsed && "justify-center px-0"
+                    )}
+                  >
+                    <Settings className="h-4 w-4 shrink-0" />
+                    <motion.span
+                      variants={textVariants}
+                      initial={collapsed ? "closed" : "open"}
+                      animate={collapsed ? "closed" : "open"}
+                      className="overflow-hidden whitespace-nowrap"
+                    >
+                      Settings
+                    </motion.span>
+                  </button>
+                </TooltipTrigger>
+                {collapsed && (
+                  <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl">
                     Settings
-                  </motion.span>
-                </button>
-              </TooltipTrigger>
-              {collapsed && (
-                <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl">
-                  Settings
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           <div className={cn(
             "flex items-center pt-1.5 border-t border-white/[0.04]",
-            collapsed ? "justify-center" : "justify-between px-3"
+            (isMobile ? false : collapsed) ? "justify-center" : "justify-between px-3"
           )}>
-            {!collapsed && (
-              <div className="flex flex-col min-w-0 flex-1 mr-2">
-                <span className="text-[10px] text-sc-text truncate font-semibold">
-                  {displayName}
-                </span>
-                {userProfession && (
-                  <span className="text-[8px] text-sc-text-muted/65 truncate font-mono mt-0.5 leading-none">
-                    {userProfession}
+            {!(isMobile ? false : collapsed) && (
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-[10px] text-sc-text truncate font-semibold">
+                    {displayName}
                   </span>
+                  {userProfession && (
+                    <span className="text-[8px] text-sc-text-muted/65 truncate font-mono mt-0.5 leading-none">
+                      {userProfession}
+                    </span>
+                  )}
+                </div>
+                {isMobile && (
+                  <button
+                    onClick={() => {
+                      router.push("/settings");
+                      closeMobileSidebar();
+                    }}
+                    className="p-1.5 rounded hover:bg-white/5 text-sc-text-muted hover:text-sc-text transition-colors cursor-pointer shrink-0"
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
                 )}
               </div>
             )}
@@ -295,7 +398,7 @@ export function AppSidebar() {
                     <LogOut className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                {collapsed && (
+                {(isMobile ? false : collapsed) && (
                   <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl">
                     Sign out
                   </TooltipContent>
@@ -305,6 +408,7 @@ export function AppSidebar() {
           </div>
         </div>
       </motion.aside>
+      </Skeleton>
 
       {/* SEARCH MODAL */}
       <AnimatePresence>

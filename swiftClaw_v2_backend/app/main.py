@@ -10,6 +10,7 @@ from app.api.auth import router as auth_router
 from app.api.keys import router as keys_router
 from app.api.chat import router as chat_router
 from app.api.onboarding import router as onboarding_router
+from app.api.memory import router as memory_router
 
 from app.config import settings
 from app.middleware.logging import setup_logging
@@ -95,3 +96,4 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(keys_router, prefix="/api/keys", tags=["keys"])
 app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
 app.include_router(onboarding_router, prefix="/api/onboarding", tags=["onboarding"])
+app.include_router(memory_router, prefix="/api/memory", tags=["memory"])

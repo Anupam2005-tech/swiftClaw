@@ -1,4 +1,4 @@
-from typing import AsyncIterator, Any, Optional
+from typing import AsyncIterator, Any, Optional, Tuple
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, AIMessageChunk
 from langchain_core.exceptions import OutputParserException
@@ -6,6 +6,11 @@ from httpx import HTTPStatusError
 
 from app.core.providers.base import ModelAdapter, ProviderCapabilities, StreamChunk, ProviderError
 from app.core.providers.registry import get_capabilities
+from app.core.providers.model_discovery import _static_models
+
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 class LangChainAdapter(ModelAdapter):
     """
@@ -92,7 +97,12 @@ def get_adapter(provider: str, api_key: str, model: str) -> ModelAdapter:
     """
     if provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(model=model, google_api_key=api_key)
+        llm = ChatGoogleGenerativeAI(
+            model=model,
+            google_api_key=api_key,
+            request_timeout=30,
+            convert_system_message_to_human=True,
+        )
     elif provider == "claude":
         from langchain_anthropic import ChatAnthropic
         llm = ChatAnthropic(model=model, api_key=api_key)
@@ -119,10 +129,59 @@ def get_adapter(provider: str, api_key: str, model: str) -> ModelAdapter:
             },
         )
     elif provider == "nvidia":
-        from langchain_openai import ChatOpenAI
-        # NVIDIA NIM is OpenAI-compatible
-        llm = ChatOpenAI(model=model, api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
+        from langchain_nvidia_ai_endpoints import ChatNVIDIA
+        llm = ChatNVIDIA(model=model, api_key=api_key)
     else:
         raise ProviderError(code="unsupported_capability", retryable=False, message=f"Unsupported provider: {provider}")
         
     return LangChainAdapter(provider=provider, model_name=model, llm=llm)
+
+
+DEFAULT_MODELS = {
+    "gemini": "gemini-1.5-flash",
+    "groq": "llama-3.1-8b-instant",
+    "openrouter": "nousresearch/hermes-3-llama-3.1-405b",
+    "claude": "claude-3-5-sonnet-latest",
+    "openai": "gpt-4o-mini",
+    "perplexity": "sonar",
+    "nvidia": "nvidia/llama-3.1-nemotron-70b-instruct",
+}
+
+
+def validate_model_for_provider(provider: str, model: str) -> Tuple[bool, str]:
+    """
+    Validate that a model exists and is supported for the given provider.
+    Returns (is_valid, model_to_use). If invalid, returns (False, fallback_model).
+    """
+    caps = get_capabilities(provider, model)
+    if caps:
+        return True, model
+    
+    fallback = DEFAULT_MODELS.get(provider, "")
+    logger.warning("model_not_valid_for_provider", provider=provider, model=model, fallback=fallback)
+    return False, fallback
+
+
+def get_fallback_provider(available_providers: list[str], failed_provider: str) -> str | None:
+    """
+    Find the best fallback provider from available providers.
+    Prioritizes low latency / high availability providers.
+    """
+    # Priority order for fallbacks (low latency, high availability)
+    fallback_priority = ["groq", "openrouter", "claude", "openai", "gemini", "perplexity", "nvidia"]
+    
+    for p in fallback_priority:
+        if p in available_providers and p != failed_provider:
+            return p
+    
+    # If no priority match, return first available
+    for p in available_providers:
+        if p != failed_provider:
+            return p
+    
+    return None
+
+
+def get_default_model(provider: str) -> str:
+    """Get the default model for a provider."""
+    return DEFAULT_MODELS.get(provider, "")

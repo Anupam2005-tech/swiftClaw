@@ -8,11 +8,63 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { Spinner } from "@/components/ui/spinner";
-import { User, LogOut, Trash2, ChevronDown, Check } from "lucide-react";
+import { User, LogOut, Trash2, ChevronDown, Check, Copy, CheckCheck, Brain } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const PROFESSIONS = ["Developer", "Designer", "Student", "Researcher", "Other"];
+const EXPORT_PROMPT = `Export all of my stored memories and any context you've learned about me from past conversations. Preserve my words verbatim where possible, especially for instructions and preferences.
+
+## Categories (output in this order):
+
+1. **Instructions**: Rules I've explicitly asked you to follow going forward — tone, format, style, "always do X", "never do Y", and corrections to your behavior. Only include rules from stored memories, not from conversations.
+
+2. **Identity**: Name, age, location, education, family, relationships, languages, and personal interests.
+
+3. **Career**: Current and past roles, companies, and general skill areas.
+
+4. **Projects**: Projects I meaningfully built or committed to. Ideally ONE entry per project. Include what it does, current status, and any key decisions. Use the project name or a short descriptor as the first words of the entry.
+
+5. **Preferences**: Opinions, tastes, and working-style preferences that apply broadly.
+
+## Format:
+
+Use section headers for each category. Within each category, list one entry per line, sorted by oldest date first. Format each line as:
+
+[YYYY-MM-DD] - Entry content here.
+
+If no date is known, use [unknown] instead.
+
+## Output:
+- Wrap the entire export in a single code block for easy copying.
+- After the code block, state whether this is the complete set or if more remain.`;
+
+function PromptCodeBlock() {
+  const [justCopied, setJustCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(EXPORT_PROMPT);
+      setJustCopied(true);
+      setTimeout(() => setJustCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div className="relative group">
+      <pre className="bg-black/40 border border-white/10 rounded-lg p-3 pr-10 h-24 overflow-y-auto overflow-x-hidden text-[10px] text-sc-text-muted/80 font-mono leading-relaxed scrollbar-premium select-all">
+        <code>{EXPORT_PROMPT}</code>
+      </pre>
+      <button
+        onClick={handleCopy}
+        className="absolute top-2 right-2 h-7 w-7 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-sc-text-muted hover:text-sc-text transition-colors cursor-pointer"
+      >
+        {justCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+      </button>
+    </div>
+  );
+}
 
 export default function ProfileSettingsPage() {
   const { user, signOut } = useAuth();
@@ -24,6 +76,9 @@ export default function ProfileSettingsPage() {
   const [showSignOut, setShowSignOut] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [profDropdownOpen, setProfDropdownOpen] = useState(false);
+  const [memoryInput, setMemoryInput] = useState("");
+  const [memoryImporting, setMemoryImporting] = useState(false);
+  const [memoryImported, setMemoryImported] = useState(false);
   const profDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,6 +118,44 @@ export default function ProfileSettingsPage() {
     }
   };
 
+  const handleDelete = async () => {
+    setSaving(true);
+    try {
+      await api.deleteAccount();
+      toast({ 
+        title: "Account Deleted", 
+        description: "Your account and all data have been permanently removed.", 
+        variant: "success" 
+      });
+      await signOut();
+    } catch (err) {
+      toast({ 
+        title: "Deletion Failed", 
+        description: "Could not delete your account. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSaving(false);
+      setShowDelete(false);
+    }
+  };
+
+  const handleMemoryImport = async () => {
+    if (!memoryInput.trim()) return;
+    setMemoryImporting(true);
+    setMemoryImported(false);
+    try {
+      await api.importMemory(memoryInput.trim(), nickname || undefined, profession || undefined);
+      setMemoryImported(true);
+      setMemoryInput("");
+      toast({ title: "Memory Imported", description: "Your personal context has been stored.", variant: "success" });
+    } catch {
+      toast({ title: "Import Failed", description: "Could not save memory.", variant: "destructive" });
+    } finally {
+      setMemoryImporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -72,7 +165,8 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+    <Skeleton name="profile-settings" loading={loading} animate="pulse">
+      <div className="flex flex-col gap-6 animate-in fade-in duration-300">
       {/* Pane title */}
       <div className="border-b border-white/5 pb-4">
         <h2 className="text-sm font-semibold text-sc-text uppercase tracking-wider flex items-center gap-2">
@@ -85,7 +179,7 @@ export default function ProfileSettingsPage() {
       </div>
 
       {/* Profile form */}
-      <div className="space-y-4 w-full max-w-md">
+      <div className="space-y-4 w-full max-w-2xl">
         <div className="flex flex-col gap-1.5">
           <label className="text-[10px] text-sc-text-muted uppercase tracking-wider font-semibold">Email</label>
           <Input value={user?.email || ""} disabled className="bg-black/30 border-white/10 h-10 text-sc-text/60 cursor-not-allowed text-xs" />
@@ -145,6 +239,44 @@ export default function ProfileSettingsPage() {
         </Button>
       </div>
 
+      {/* Memory Import */}
+      <div className="border-t border-white/5 pt-4 space-y-3">
+        <h3 className="text-xs font-semibold text-sc-text uppercase tracking-wider flex items-center gap-2">
+          <Brain className="h-4 w-4" />
+          Memory
+        </h3>
+        <p className="text-[10px] text-sc-text-muted leading-normal">
+          Import personal context from text. Copy the prompt, run it with an AI on your raw notes, then paste the result below.
+        </p>
+
+        <div className="space-y-3 w-full max-w-2xl">
+          <PromptCodeBlock />
+
+          <textarea
+            value={memoryInput}
+            onChange={(e) => setMemoryInput(e.target.value)}
+            placeholder="Paste your personal notes, background, preferences here..."
+            className="w-full h-28 bg-black/30 border border-white/10 rounded-lg p-3 text-xs text-sc-text placeholder:text-sc-text-muted/40 resize-none outline-none focus:border-sc-accent transition-colors scrollbar-premium"
+          />
+
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={handleMemoryImport}
+              disabled={!memoryInput.trim() || memoryImporting}
+              className="h-9 px-5 bg-sc-accent text-accent-foreground font-semibold cursor-pointer hover:bg-sc-accent/90 disabled:opacity-50 text-xs"
+            >
+              {memoryImporting ? <Spinner size="sm" /> : "Import to Memory"}
+            </Button>
+            {memoryImported && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-semibold animate-in fade-in duration-200">
+                <CheckCheck className="h-3 w-3" />
+                Imported
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Actions */}
       <div className="border-t border-white/5 pt-4 space-y-3">
         <h3 className="text-xs font-semibold text-sc-text uppercase tracking-wider">Account Actions</h3>
@@ -177,10 +309,11 @@ export default function ProfileSettingsPage() {
           <p className="text-sc-text-muted leading-relaxed">This will permanently delete your account and all associated data, including conversations, keys, and preferences. This action cannot be undone.</p>
           <div className="flex gap-2 justify-end border-t border-white/5 pt-3">
             <Button variant="ghost" onClick={() => setShowDelete(false)} className="h-10 px-4 hover:bg-white/5 cursor-pointer text-sc-text-muted text-xs">Cancel</Button>
-            <Button className="h-10 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold cursor-pointer text-xs">Delete Account</Button>
+            <Button onClick={handleDelete} className="h-10 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold cursor-pointer text-xs">Delete Account</Button>
           </div>
         </div>
       </Modal>
     </div>
+    </Skeleton>
   );
 }

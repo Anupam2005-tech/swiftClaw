@@ -5,6 +5,8 @@ import { ModelPreferences, TaskType, ProviderId } from "../../lib/types/provider
 import { Spinner } from "../ui/spinner";
 import { PROVIDERS } from "../onboarding/ProviderSelectionStep";
 import { AlertCircle, Sliders } from "lucide-react";
+import { useAllProviderModels } from "@/lib/hooks/useProviderModels";
+import { ModelSelect } from "@/components/ui/model-select";
 
 interface ModelPreferencesTableProps {
   preferences: ModelPreferences | null;
@@ -46,37 +48,7 @@ const TASK_ROWS: { task: TaskType; name: string; description: string; requiredPr
   },
 ];
 
-const PROVIDER_MODELS: Record<ProviderId, { value: string; label: string }[]> = {
-  gemini: [
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-  ],
-  claude: [
-    { value: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
-    { value: "claude-3-haiku", label: "Claude 3 Haiku" },
-  ],
-  openai: [
-    { value: "gpt-4o", label: "GPT-4o" },
-    { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-    { value: "dall-e-3", label: "DALL-E 3" },
-  ],
-  groq: [
-    { value: "llama-3.1-70b", label: "Llama 3.1 70B (Groq)" },
-    { value: "llama-3.1-8b", label: "Llama 3.1 8B (Groq)" },
-  ],
-  perplexity: [
-    { value: "sonar-medium", label: "Sonar Medium" },
-    { value: "sonar-small", label: "Sonar Small" },
-  ],
-  openrouter: [
-    { value: "meta-llama/llama-3.1-405b", label: "Llama 3.1 405B" },
-    { value: "mistralai/mixtral-8x22b", label: "Mixtral 8x22B" },
-  ],
-  nvidia: [
-    { value: "cosmos-video", label: "NVIDIA Cosmos Video" },
-    { value: "nemotron-4", label: "Nemotron-4 340B" },
-  ],
-};
+
 
 export function ModelPreferencesTable({
   preferences,
@@ -84,6 +56,8 @@ export function ModelPreferencesTable({
   onPreferenceChange,
   loading,
 }: ModelPreferencesTableProps) {
+  const { modelMap, loading: modelsLoading } = useAllProviderModels(activeKeys);
+
   if (loading || !preferences) {
     return (
       <div className="flex items-center justify-center p-12 text-sc-text-muted/40">
@@ -94,6 +68,10 @@ export function ModelPreferencesTable({
 
   const getProviderName = (id: ProviderId) => {
     return PROVIDERS.find((p) => p.id === id)?.name || id;
+  };
+
+  const getModelsFor = (provider: ProviderId) => {
+    return modelMap[provider] || [];
   };
 
   return (
@@ -145,8 +123,8 @@ export function ModelPreferencesTable({
                       value={currentPref.provider}
                       onChange={(e) => {
                         const newProv = e.target.value as ProviderId;
-                        const models = PROVIDER_MODELS[newProv] || [];
-                        const defaultModel = models[0]?.value || "";
+                        const models = getModelsFor(newProv);
+                        const defaultModel = models[0]?.id || "";
                         onPreferenceChange(task, newProv, defaultModel);
                       }}
                       className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-[11px] text-sc-text outline-none focus:border-sc-accent transition-colors"
@@ -164,17 +142,13 @@ export function ModelPreferencesTable({
                     <label className="text-[8px] text-sc-text-muted uppercase tracking-wider font-semibold">
                       Active Model
                     </label>
-                    <select
+                    <ModelSelect
                       value={currentPref.model}
-                      onChange={(e) => onPreferenceChange(task, currentPref.provider, e.target.value)}
-                      className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-[11px] text-sc-text outline-none focus:border-sc-accent transition-colors"
-                    >
-                      {(PROVIDER_MODELS[currentPref.provider] || []).map((model) => (
-                        <option key={model.value} value={model.value}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </select>
+                      models={getModelsFor(currentPref.provider)}
+                      onChange={(m) => onPreferenceChange(task, currentPref.provider, m)}
+                      disabled={modelsLoading}
+                      placeholder={modelsLoading ? "Loading..." : undefined}
+                    />
                   </div>
                 </div>
               ) : (

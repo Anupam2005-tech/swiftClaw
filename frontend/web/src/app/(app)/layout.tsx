@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { usePathname } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
+import { SidebarProvider } from "@/lib/contexts/SidebarContext";
 import { Terminal } from "lucide-react";
 
 export default function AppLayout({
@@ -18,7 +19,7 @@ export default function AppLayout({
   // Full-screen Premium loading state
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-sc-canvas text-sc-text gap-4 animate-in fade-in duration-300">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-sc-canvas text-sc-text-sc-text gap-4 animate-in fade-in duration-300">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 rounded-lg border border-white/10 bg-white/[0.01] flex items-center justify-center animate-pulse">
             <Terminal className="h-5 w-5 text-sc-text" />
@@ -50,14 +51,16 @@ export default function AppLayout({
 
   // Authenticated workspace shell (Sidebar + main panel)
   return (
-    <div className="flex-1 flex h-screen overflow-hidden bg-sc-canvas text-sc-text">
-      {/* Sidebar Panel */}
-      <AppSidebar />
+    <SidebarProvider>
+      <div className="flex-1 flex h-screen overflow-hidden bg-sc-canvas text-sc-text">
+        {/* Sidebar Panel */}
+        <AppSidebar />
 
-      {/* Main Workspace Panel */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {children}
+        {/* Main Workspace Panel */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+          {children}
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

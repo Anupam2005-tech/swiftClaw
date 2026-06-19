@@ -21,7 +21,8 @@ export const useChatStream = (
       attachments: FileAttachment[] = [],
       mode: "chat" | "image" | "video" = "chat",
       messagesList: Message[],
-      setMessagesList: React.Dispatch<React.SetStateAction<Message[]>>
+      setMessagesList: React.Dispatch<React.SetStateAction<Message[]>>,
+      webSearchEnabled: boolean = false
     ) => {
       if (streaming) return;
 
@@ -60,7 +61,7 @@ export const useChatStream = (
       let lastEvent: SSEEvent | null = null;
 
       try {
-        const stream = api.sendChatMessage(conversationId, text, attachments, mode);
+        const stream = api.sendChatMessage(conversationId, text, attachments, mode, webSearchEnabled);
 
         for await (const event of stream) {
           if (!activeStreamRef.current) {

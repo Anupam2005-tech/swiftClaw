@@ -235,6 +235,25 @@
   height: 0;
 }
 
+@utility scrollbar-premium {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+.scrollbar-premium::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-premium::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-premium::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+.scrollbar-premium::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 @layer base {
   .scroll-target {
     scroll-margin-top: 6rem;
@@ -289,4 +308,63 @@
   --prompt-button-hover: rgba(255, 255, 255, 0.12);
   --prompt-send-bg: #FFFDF9;
   --prompt-send-text: #080808;
+}
+
+/* Boneyard Skeleton layout fixes to prevent height collapse */
+div[data-boneyard].h-full,
+div[data-boneyard].flex-1 {
+  display: flex;
+  flex-direction: column;
+}
+
+div[data-boneyard].h-full > div[data-boneyard-content="true"],
+div[data-boneyard].flex-1 > div[data-boneyard-content="true"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+/* ── Dynamic Skeleton Style ── */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  50% {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.boneyard-dynamic-skeleton {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.boneyard-dynamic-skeleton h1,
+.boneyard-dynamic-skeleton h2,
+.boneyard-dynamic-skeleton h3,
+.boneyard-dynamic-skeleton h4,
+.boneyard-dynamic-skeleton h5,
+.boneyard-dynamic-skeleton h6,
+.boneyard-dynamic-skeleton p,
+.boneyard-dynamic-skeleton span,
+.boneyard-dynamic-skeleton a,
+.boneyard-dynamic-skeleton button,
+.boneyard-dynamic-skeleton img,
+.boneyard-dynamic-skeleton svg,
+.boneyard-dynamic-skeleton input,
+.boneyard-dynamic-skeleton textarea,
+.boneyard-dynamic-skeleton code,
+.boneyard-dynamic-skeleton pre,
+.boneyard-dynamic-skeleton label,
+.boneyard-dynamic-skeleton li {
+  color: transparent !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
 }

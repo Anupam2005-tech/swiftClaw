@@ -1,0 +1,8 @@
+{
+  "outDir": "src/bones",
+  "breakpoints": [375, 768, 1024, 1440],
+  "devServer": "http://localhost:3000",
+  "color": "rgba(255,255,255,0.04)",
+  "darkColor": "rgba(255,255,255,0.06)",
+  "animate": "pulse"
+}

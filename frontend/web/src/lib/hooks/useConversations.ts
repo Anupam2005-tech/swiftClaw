@@ -9,11 +9,13 @@ export const useConversations = (activeId?: string) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const router = useRouter();
 
-  const fetchConversations = useCallback(async () => {
-    setLoading(true);
+  const fetchConversations = useCallback(async (isInitial = false) => {
+    if (isInitial) {
+      setLoading(true);
+    }
     try {
       const list = await api.listConversations();
       setConversations(list);
@@ -24,8 +26,10 @@ export const useConversations = (activeId?: string) => {
     }
   }, []);
 
-  const fetchMessages = useCallback(async (convId: string) => {
-    setMessagesLoading(true);
+  const fetchMessages = useCallback(async (convId: string, isInitial = false) => {
+    if (isInitial) {
+      setMessagesLoading(true);
+    }
     try {
       const history = await api.getMessages(convId);
       setMessages(history);
@@ -40,28 +44,22 @@ export const useConversations = (activeId?: string) => {
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
-      fetchConversations();
+      fetchConversations(true);
     }
   }, [fetchConversations]);
 
-  const activeRef = useRef(activeId);
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (activeId !== activeRef.current) {
-      activeRef.current = activeId;
-      if (activeId) {
-        fetchMessages(activeId);
-      } else {
-        setMessages([]);
-      }
+    if (activeId) {
+      fetchMessages(activeId, true);
+    } else {
+      setMessages([]);
     }
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [activeId, fetchMessages]);
 
   const createConversation = async (title = "New Conversation"): Promise<string> => {
     try {
       const newConv = await api.createConversation(title);
-      await fetchConversations();
+      await fetchConversations(false);
       router.push(`/chat/${newConv.id}`);
       return newConv.id;
     } catch (err) {
@@ -73,7 +71,8 @@ export const useConversations = (activeId?: string) => {
   const deleteConversation = async (id: string) => {
     try {
       await api.deleteConversation(id);
-      await fetchConversations();
+      await fetchConversations(false);
+      window.dispatchEvent(new CustomEvent("conversations-updated"));
       if (activeId === id) {
         router.push("/chat");
       }
@@ -85,7 +84,8 @@ export const useConversations = (activeId?: string) => {
   const batchDeleteConversations = async (ids: string[]) => {
     try {
       await api.batchDeleteConversations(ids);
-      await fetchConversations();
+      await fetchConversations(false);
+      window.dispatchEvent(new CustomEvent("conversations-updated"));
       if (activeId && ids.includes(activeId)) {
         router.push("/chat");
       }
@@ -102,8 +102,8 @@ export const useConversations = (activeId?: string) => {
     createConversation,
     deleteConversation,
     batchDeleteConversations,
-    refreshConversations: fetchConversations,
-    refreshMessages: () => activeId && fetchMessages(activeId),
+    refreshConversations: () => fetchConversations(false),
+    refreshMessages: () => activeId && fetchMessages(activeId, false),
     setMessages,
   };
 };

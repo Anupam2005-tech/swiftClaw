@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { PROVIDERS } from "./ProviderSelectionStep";
+import { useAllProviderModels } from "@/lib/hooks/useProviderModels";
+import { ModelSelect } from "@/components/ui/model-select";
 
 const TASK_INFOS: { task: TaskType; name: string; description: string; requiredProviders: ProviderId[] }[] = [
   {
@@ -41,38 +43,6 @@ const TASK_INFOS: { task: TaskType; name: string; description: string; requiredP
   },
 ];
 
-const PROVIDER_MODELS: Record<ProviderId, { value: string; label: string }[]> = {
-  gemini: [
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-  ],
-  claude: [
-    { value: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
-    { value: "claude-3-haiku", label: "Claude 3 Haiku" },
-  ],
-  openai: [
-    { value: "gpt-4o", label: "GPT-4o" },
-    { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-    { value: "dall-e-3", label: "DALL-E 3" },
-  ],
-  groq: [
-    { value: "llama-3.1-70b", label: "Llama 3.1 70B (Groq)" },
-    { value: "llama-3.1-8b", label: "Llama 3.1 8B (Groq)" },
-  ],
-  perplexity: [
-    { value: "sonar-medium", label: "Sonar Medium" },
-    { value: "sonar-small", label: "Sonar Small" },
-  ],
-  openrouter: [
-    { value: "meta-llama/llama-3.1-405b", label: "Llama 3.1 405B" },
-    { value: "mistralai/mixtral-8x22b", label: "Mixtral 8x22B" },
-  ],
-  nvidia: [
-    { value: "cosmos-video", label: "NVIDIA Cosmos Video" },
-    { value: "nemotron-4", label: "Nemotron-4 340B" },
-  ],
-};
-
 interface TaskModelMappingStepProps {
   selectedProviders: ProviderId[];
   preferences: ModelPreferences | null;
@@ -103,10 +73,16 @@ export function TaskModelMappingStep({
   onPrev,
   loading,
 }: TaskModelMappingStepProps) {
+  const { modelMap, loading: modelsLoading } = useAllProviderModels(selectedProviders);
+
   if (!preferences) return null;
 
   const getProviderName = (id: ProviderId) => {
     return PROVIDERS.find((p) => p.id === id)?.name || id;
+  };
+
+  const getModelsFor = (provider: ProviderId) => {
+    return modelMap[provider] || [];
   };
 
   return (
@@ -178,8 +154,8 @@ export function TaskModelMappingStep({
                       value={currentPref.provider}
                       onChange={(e) => {
                         const newProv = e.target.value as ProviderId;
-                        const models = PROVIDER_MODELS[newProv] || [];
-                        const defaultModel = models[0]?.value || "";
+                        const models = getModelsFor(newProv);
+                        const defaultModel = models[0]?.id || "";
                         onPreferenceChange(task, newProv, defaultModel);
                       }}
                       className="bg-black/40 border border-white/10 rounded px-2.5 py-1.5 text-xs text-sc-text outline-none focus:border-sc-accent transition-colors appearance-none cursor-pointer"
@@ -196,17 +172,13 @@ export function TaskModelMappingStep({
                     <label className="text-[9px] text-sc-text-muted uppercase tracking-wider font-semibold">
                       Model
                     </label>
-                    <select
+                    <ModelSelect
                       value={currentPref.model}
-                      onChange={(e) => onPreferenceChange(task, currentPref.provider, e.target.value)}
-                      className="bg-black/40 border border-white/10 rounded px-2.5 py-1.5 text-xs text-sc-text outline-none focus:border-sc-accent transition-colors appearance-none cursor-pointer"
-                    >
-                      {(PROVIDER_MODELS[currentPref.provider] || []).map((model) => (
-                        <option key={model.value} value={model.value}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </select>
+                      models={getModelsFor(currentPref.provider)}
+                      onChange={(m) => onPreferenceChange(task, currentPref.provider, m)}
+                      disabled={modelsLoading}
+                      placeholder={modelsLoading ? "Loading..." : undefined}
+                    />
                   </div>
                 </div>
               )}

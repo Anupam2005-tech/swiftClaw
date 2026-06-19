@@ -3,19 +3,19 @@
 import React from "react";
 import { Conversation } from "../../lib/types/conversation";
 import Link from "next/link";
-import { MessageSquare, Trash2 } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ConversationListItemProps {
   conversation: Conversation;
   isActive: boolean;
-  onDelete: (id: string) => void;
+  onSelect?: (id: string) => void;
 }
 
 export function ConversationListItem({
   conversation,
   isActive,
-  onDelete,
+  onSelect,
 }: ConversationListItemProps) {
   // Format date helper
   const formatTime = (isoString: string) => {
@@ -37,6 +37,13 @@ export function ConversationListItem({
     }
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (onSelect) {
+      e.preventDefault();
+      onSelect(conversation.id);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -51,6 +58,7 @@ export function ConversationListItem({
       )}
       <Link
         href={`/chat/${conversation.id}`}
+        onClick={handleClick}
         className="flex-1 flex gap-2.5 items-center px-3 py-2 min-w-0"
       >
         <MessageSquare className="h-3.5 w-3.5 shrink-0 text-sc-text-muted/70 group-hover:text-sc-text/80 transition-colors" />
@@ -66,19 +74,6 @@ export function ConversationListItem({
           {formatTime(conversation.updated_at)}
         </span>
       </Link>
-
-      {/* Delete Trigger */}
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onDelete(conversation.id);
-        }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-white/5 text-sc-text-muted hover:text-red-400 transition-all cursor-pointer z-10"
-        title="Delete Conversation"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }

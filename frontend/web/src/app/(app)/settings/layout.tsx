@@ -31,7 +31,7 @@ export default function SettingsLayout({
           <SettingsNav />
 
           {/* Right Sub-pane Workspace */}
-          <div className="flex-1 min-w-0 w-full border border-white/5 bg-black/40 backdrop-blur-md rounded-xl p-4 md:p-6 shadow-xl relative overflow-hidden">
+          <div className="flex-1 min-w-0 w-full border border-white/5 bg-[#0A0A0C] rounded-xl p-4 md:p-6 shadow-2xl relative overflow-hidden">
             {/* Top border neon line */}
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sc-accent/20 to-transparent" />
             {children}

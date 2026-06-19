@@ -20,7 +20,7 @@ from app.db.conversations import (
     list_conversations,
     delete_conversation_doc
 )
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from app.core.providers.base import ProviderError
 from app.core.providers.registry import get_capabilities
 from app.core.providers.factory import get_adapter
@@ -85,6 +85,7 @@ async def stream_chat(
     conversation_id: str = Form(...),
     message: str = Form(...),
     files: Optional[List[UploadFile]] = File(None),
+    web_search: bool = Form(False),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -175,6 +176,25 @@ async def stream_chat(
         current_message=current_message,
         max_tokens=max_context_tokens
     )
+    
+    # Inject web search results if enabled
+    if web_search:
+        try:
+            from app.core.agent.tools.web_search import search_ddg
+            results = search_ddg(message, max_results=5)
+            if results and not results[0].get("error"):
+                web_context_lines = []
+                for r in results:
+                    web_context_lines.append(
+                        f"Title: {r['title']}\nURL: {r['url']}\nSnippet: {r['snippet']}"
+                    )
+                web_context = "\n\n---\n\n".join(web_context_lines)
+                web_message = SystemMessage(
+                    content=f"[Web Search Results for query: \"{message}\"]\n\n{web_context}\n\n[Use these results to answer the user's question if relevant. Do not mention the search results unless asked.]"
+                )
+                assembled_messages.insert(1, web_message)
+        except Exception as e:
+            logger.warning("web_search_injection_failed", error=str(e))
     
     # Save user message to DB
     add_message_doc(uid, conversation_id, "user", message)

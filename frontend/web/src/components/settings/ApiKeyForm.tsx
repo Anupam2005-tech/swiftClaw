@@ -11,6 +11,7 @@ import { Modal } from "../ui/modal";
 import { useToast } from "../ui/toast";
 import { PROVIDERS } from "../onboarding/ProviderSelectionStep";
 import { cn } from "@/lib/utils";
+import { clearModelCache } from "@/lib/api/models";
 
 interface ApiKeyFormProps {
   onAddKey: (provider: ProviderId, key: string) => Promise<{ success: boolean; error?: string }>;
@@ -66,6 +67,7 @@ export function ApiKeyForm({ onAddKey, existingKeys, initialProvider, onClose, l
     try {
       const res = await onAddKey(provider, key);
       if (res.success) {
+        clearModelCache(provider);
         toast({
           title: isEditing ? "Key Updated" : "Key Saved",
           description: `API key for ${getProviderName(provider)} ${isEditing ? "updated" : "encrypted and stored"}.`,

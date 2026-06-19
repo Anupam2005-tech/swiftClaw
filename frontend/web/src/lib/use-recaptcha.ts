@@ -5,13 +5,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 declare global {
   interface Window {
     grecaptcha?: {
+      enterprise?: {
+        ready: (callback: () => void) => void;
+        execute: (siteKey: string, options: { action: string }) => Promise<string>;
+        render: (container: string | HTMLElement, parameters: { sitekey: string; theme?: string; size?: string }) => number;
+      };
       ready: (callback: () => void) => void;
       execute: (siteKey: string, options: { action: string }) => Promise<string>;
     };
   }
 }
 
-const SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+const SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LcpNwQtAAAAADuGJtSGs1x87mpVvjd8AobE-H0I";
 
 export function useRecaptcha() {
   const [isReady, setIsReady] = useState(false);
@@ -24,8 +29,8 @@ export function useRecaptcha() {
     }
 
     pollRef.current = setInterval(() => {
-      if (window.grecaptcha?.ready) {
-        window.grecaptcha.ready(() => setIsReady(true));
+      if (window.grecaptcha?.enterprise?.ready || window.grecaptcha?.ready) {
+        (window.grecaptcha.enterprise?.ready || window.grecaptcha.ready)(() => setIsReady(true));
         if (pollRef.current) clearInterval(pollRef.current);
         pollRef.current = null;
       }
@@ -37,11 +42,16 @@ export function useRecaptcha() {
   }, []);
 
   const executeRecaptcha = useCallback(async (action = "submit"): Promise<string | null> => {
-    if (!SITE_KEY || !window.grecaptcha) return null;
+    if (!SITE_KEY) return null;
 
     return new Promise((resolve) => {
-      window.grecaptcha!.ready(() => {
-        window.grecaptcha!.execute(SITE_KEY, { action }).then(resolve, () => resolve(null));
+      const ready = window.grecaptcha?.enterprise?.ready || window.grecaptcha?.ready;
+      const execute = window.grecaptcha?.enterprise?.execute || window.grecaptcha?.execute;
+      
+      if (!ready || !execute) return resolve(null);
+      
+      ready(() => {
+        execute(SITE_KEY, { action }).then(resolve, () => resolve(null));
       });
     });
   }, []);
@@ -51,10 +61,11 @@ export function useRecaptcha() {
     if (!token) return false;
 
     try {
-      const res = await fetch("/api/verify-recaptcha", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/auth/recaptcha/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, action: "submit" }),
       });
       const data = await res.json();
       return data.success === true && data.score >= 0.5;

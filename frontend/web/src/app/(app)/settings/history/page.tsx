@@ -17,6 +17,7 @@ import {
   CheckCircle,
   MessageSquare,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const PAGE_SIZE = 10;
 
@@ -89,7 +90,8 @@ export default function HistorySettingsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 animate-in fade-in duration-300">
+    <Skeleton name="history-settings" loading={loading} animate="pulse">
+      <div className="flex flex-col gap-4 animate-in fade-in duration-300">
       <div className="flex items-center justify-between border-b border-white/5 pb-4">
         <div>
           <h2 className="text-sm font-semibold text-sc-text uppercase tracking-wider flex items-center gap-2">
@@ -177,5 +179,6 @@ export default function HistorySettingsPage() {
         </div>
       </Modal>
     </div>
+    </Skeleton>
   );
 }

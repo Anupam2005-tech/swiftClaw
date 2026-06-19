@@ -1,7 +1,7 @@
 import React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { ArrowUp, Paperclip, X, Square, Image, FileText, Compass, ChevronRight, Sparkles, Plus } from "lucide-react";
+import { ArrowUp, Paperclip, X, Square, Image, FileText, Compass, ChevronRight, Sparkles, Plus, Cpu } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
@@ -573,6 +573,26 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                       <span className="text-[8px] text-sc-text-muted/40 truncate w-36 leading-none">Benchmarks & comparisons</span>
                     </div>
                   </button>
+
+                  <div className="h-px bg-white/[0.04] my-1" />
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        disabled
+                        className="flex items-center gap-2.5 px-3 py-1.5 text-xs rounded-xl text-sc-text-muted/40 opacity-40 cursor-not-allowed select-none w-full text-left"
+                      >
+                        <Cpu className="h-3.5 w-3.5 text-cyan-400/50 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-medium leading-tight">MCP Server</span>
+                          <span className="text-[8px] text-white/20 truncate w-36 leading-none">Coming soon</span>
+                        </div>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="center">
+                      MCP connections coming soon
+                    </TooltipContent>
+                  </Tooltip>
                 </motion.div>
               )}
             </AnimatePresence>

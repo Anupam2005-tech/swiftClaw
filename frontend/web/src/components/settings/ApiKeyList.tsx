@@ -8,6 +8,7 @@ import { Modal } from "../ui/modal";
 import { useToast } from "../ui/toast";
 import { ApiKeyForm } from "./ApiKeyForm";
 import { PROVIDERS } from "../onboarding/ProviderSelectionStep";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ApiKeyListProps {
   keys: KeyMeta[];
@@ -71,20 +72,18 @@ export function ApiKeyList({ keys, onRemove, onUpdateKey, loading }: ApiKeyListP
     );
   }
 
-  if (keys.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 border border-dashed border-white/10 rounded-lg text-center bg-black/20 select-none">
-        <ShieldCheck className="h-8 w-8 text-sc-text-muted/30 mb-3" />
-        <h4 className="text-xs font-semibold text-sc-text">Key Vault Empty</h4>
-        <p className="text-[10px] text-sc-text-muted mt-1 max-w-[280px] leading-relaxed">
-          Configure an LLM provider key below to enable agent routing, file analysis, and generations.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2">
+    <Skeleton name="api-key-list" loading={loading} animate="pulse">
+      {keys.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-8 border border-dashed border-white/10 rounded-lg text-center bg-black/20 select-none">
+          <ShieldCheck className="h-8 w-8 text-sc-text-muted/30 mb-3" />
+          <h4 className="text-xs font-semibold text-sc-text">Key Vault Empty</h4>
+          <p className="text-[10px] text-sc-text-muted mt-1 max-w-[280px] leading-relaxed">
+            Configure an LLM provider key below to enable agent routing, file analysis, and generations.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
       {keys.map((keyMeta) => (
         <div
           key={keyMeta.provider}
@@ -186,6 +185,8 @@ export function ApiKeyList({ keys, onRemove, onUpdateKey, loading }: ApiKeyListP
         </div>
       </Modal>
     </div>
+      )}
+    </Skeleton>
   );
 }
 export default ApiKeyList;

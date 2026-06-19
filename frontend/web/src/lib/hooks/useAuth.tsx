@@ -13,6 +13,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
+import { useToast } from "@/components/ui/toast";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 interface AuthContextType {
   user: User | null;
@@ -57,6 +59,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const router = useRouter();
   const pathname = usePathname();
+
+  const { toast } = useToast();
 
   const refreshUser = async () => {
     try {
@@ -208,6 +212,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, provider: string) => {
     setLoading(true);
     try {
+      const recaptchaResult = await verifyRecaptcha("login");
+      if (!recaptchaResult.success) {
+        const errorMsg = `Security check failed: ${recaptchaResult.error_codes.join(", ")}`;
+        console.error("reCAPTCHA verification failed:", recaptchaResult.error_codes);
+        throw new Error(errorMsg);
+      }
+      
       if (provider === "google") {
         const googleProvider = new GoogleAuthProvider();
         await signInWithPopup(auth, googleProvider);
@@ -256,12 +267,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const revokeSession = async (sessionId: string) => {
     try {
+      const isCurrent = sessions.find((s) => s.session_id === sessionId)?.is_current;
       await api.revokeSession(sessionId);
-      await refreshSessions();
-      const currentUser = await api.getCurrentUser();
-      if (!currentUser) {
-        setUser(null);
-        router.push("/login");
+      
+      if (isCurrent) {
+        toast({
+          title: "Session Revoked",
+          description: "Your current session was terminated. You will be logged out.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        // Delay logout slightly so user can see the toast
+        setTimeout(async () => {
+          await signOut();
+        }, 2000);
+      } else {
+        await refreshSessions();
       }
     } catch (err) {
       console.error("Revoking session failed:", err);
@@ -271,12 +292,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const revokeAllSessions = async () => {
     try {
       await api.revokeAllSessions();
-      await refreshSessions();
-      const currentUser = await api.getCurrentUser();
-      if (!currentUser) {
-        setUser(null);
-        router.push("/login");
-      }
+      toast({
+        title: "All Sessions Revoked",
+        description: "All active sessions have been terminated. You will be logged out.",
+        variant: "destructive",
+        duration: 3000,
+      });
+      // Delay logout slightly so user can see the toast
+      setTimeout(async () => {
+        await signOut();
+      }, 2000);
     } catch (err) {
       console.error("Revoking all sessions failed:", err);
     }

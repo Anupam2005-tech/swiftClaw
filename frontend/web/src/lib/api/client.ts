@@ -7,13 +7,13 @@ import { MediaJob, SSEEvent } from "../types/agent";
 const isBrowser = typeof window !== "undefined";
 
 const DEFAULT_PREFERENCES: ModelPreferences = {
-  chat: { task: "chat", provider: "claude", model: "claude-3-5-sonnet" },
-  web_search: { task: "web_search", provider: "perplexity", model: "sonar-medium" },
-  file_analysis: { task: "file_analysis", provider: "claude", model: "claude-3-5-sonnet" },
+  chat: { task: "chat", provider: "claude", model: "claude-3-5-sonnet-latest" },
+  web_search: { task: "web_search", provider: "perplexity", model: "sonar" },
+  file_analysis: { task: "file_analysis", provider: "claude", model: "claude-3-5-sonnet-latest" },
   image_analysis: { task: "image_analysis", provider: "openai", model: "gpt-4o" },
   image_generation: { task: "image_generation", provider: "openai", model: "dall-e-3" },
   video_analysis: { task: "video_analysis", provider: "gemini", model: "gemini-1.5-pro" },
-  video_generation: { task: "video_generation", provider: "nvidia", model: "cosmos-video" },
+  video_generation: { task: "video_generation", provider: "nvidia", model: "nvidia/llama-3.1-nemotron-70b-instruct" },
 };
 
 const getApiUrl = () => {
@@ -330,7 +330,8 @@ export const api = {
     conversationId: string,
     message: string,
     files: FileAttachment[] = [],
-    mode: "chat" | "image" | "video" = "chat"
+    mode: "chat" | "image" | "video" = "chat",
+    webSearch: boolean = false
   ): AsyncGenerator<SSEEvent, void, unknown> {
     lastActiveConversationId = conversationId;
     const url = `${getApiUrl()}/api/chat/stream`;
@@ -340,6 +341,7 @@ export const api = {
     const formData = new FormData();
     formData.append("conversation_id", conversationId);
     formData.append("message", message);
+    formData.append("web_search", webSearch ? "true" : "false");
 
     if (files && files.length > 0) {
       for (const f of files) {
@@ -415,6 +417,14 @@ export const api = {
         console.error("Failed to request stream termination:", e);
       }
     }
+  },
+
+  // Memory import
+  async importMemory(content: string, nickname?: string, profession?: string): Promise<{ success: boolean }> {
+    return await apiRequest("/api/memory/import", {
+      method: "POST",
+      body: JSON.stringify({ content, nickname, profession }),
+    });
   },
 
   // Integrations MCP (Backend placeholder)
