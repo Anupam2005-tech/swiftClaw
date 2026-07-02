@@ -8,7 +8,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpeg", "jpg", "webp", "gif", "docx", "txt", "csv", "md"}
-MAX_FILE_SIZE = 50 * 1024 * 1024 # 50MB
+MAX_FILE_SIZE = 10 * 1024 * 1024 # 10MB
 
 async def validate_and_process_file(file: UploadFile) -> dict:
     """
@@ -43,7 +43,8 @@ async def validate_and_process_file(file: UploadFile) -> dict:
             "type": "image",
             "content": b64_content,
             "filename": filename,
-            "mime_type": mime_type
+            "mime_type": mime_type,
+            "size": file_size
         }
         
     # Process text-based documents
@@ -71,7 +72,8 @@ async def validate_and_process_file(file: UploadFile) -> dict:
             "type": "text",
             "content": text_content,
             "filename": filename,
-            "mime_type": mime_type
+            "mime_type": mime_type,
+            "size": file_size
         }
     except Exception as e:
         logger.error("file_processing_failed", filename=filename, error=str(e))

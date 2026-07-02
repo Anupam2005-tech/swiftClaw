@@ -1,22 +1,16 @@
 import asyncio
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Optional
 from datetime import datetime, timezone
 import structlog
 import httpx
 
 from app.db.firestore import db
-from app.core.providers.registry import get_capabilities
 
 logger = structlog.get_logger(__name__)
 
 CACHE_TTL_HOURS = 24
 
-OPENAI_COMPATIBLE_BASE_URLS = {
-    "openai": "https://api.openai.com",
-    "groq": "https://api.groq.com/openai",
-    "openrouter": "https://openrouter.ai/api/v1",
-}
 
 @dataclass
 class ModelInfo:
@@ -27,15 +21,8 @@ class ModelInfo:
     supports_vision: bool = False
     supports_tools: bool = False
     supports_streaming: bool = True
-
-
-async def discover_models(provider: str, api_key: str) -> list[dict]:
-    if provider == "gemini":
-        return await _discover_gemini(api_key)
-    elif provider in OPENAI_COMPATIBLE_BASE_URLS:
-        return await _discover_openai_compatible(provider, api_key)
-    else:
-        return _static_models(provider)
+    input_cost_per_1k: Optional[float] = None
+    output_cost_per_1k: Optional[float] = None
 
 
 class ModelDiscoveryError(Exception):
@@ -44,6 +31,20 @@ class ModelDiscoveryError(Exception):
         super().__init__(detail)
         self.code = code
         self.detail = detail
+
+
+async def discover_models(provider: str, api_key: str) -> list[dict]:
+    """Discover models for a provider using live API calls only."""
+    if provider == "gemini":
+        return await _discover_gemini(api_key)
+    elif provider == "openai":
+        return await _discover_openai(api_key)
+    elif provider == "groq":
+        return await _discover_groq(api_key)
+    elif provider == "nvidia":
+        return await _discover_nvidia(api_key)
+    else:
+        raise ModelDiscoveryError("unsupported_provider", f"Provider {provider} is not supported")
 
 
 async def _discover_gemini(api_key: str) -> list[dict]:
@@ -55,9 +56,14 @@ async def _discover_gemini(api_key: str) -> list[dict]:
         def list_models_sync():
             result = []
             for m in client.models.list():
-                if "generateContent" not in m.supported_generation_methods:
-                    continue
                 model_id = m.name.replace("models/", "")
+                try:
+                    if hasattr(m, "supported_generation_methods") and "generateContent" not in m.supported_generation_methods:
+                        continue
+                    if hasattr(m, "support_generate_content") and not m.support_generate_content:
+                        continue
+                except Exception:
+                    pass
                 result.append({
                     "id": model_id,
                     "provider": "gemini",
@@ -66,26 +72,29 @@ async def _discover_gemini(api_key: str) -> list[dict]:
                     "supports_vision": "image" in str(getattr(m, "supported_input_modalities", [])).lower(),
                     "supports_tools": True,
                     "supports_streaming": True,
+                    "input_cost_per_1k": None,
+                    "output_cost_per_1k": None,
                 })
             return result
 
-        return await asyncio.to_thread(list_models_sync)
+        models = await asyncio.to_thread(list_models_sync)
+        if not models:
+            raise ModelDiscoveryError("empty_response", "No models returned by Gemini API")
+        return models
+    except ModelDiscoveryError:
+        raise
     except Exception as e:
         err_str = str(e).lower()
         if "api key" in err_str or "api_key" in err_str or "invalid" in err_str or "401" in err_str or "unauthenticated" in err_str:
             raise ModelDiscoveryError("invalid_key", f"Gemini API key is invalid or missing permissions: {e}")
         elif "429" in err_str or "quota" in err_str or "rate" in err_str or "resource_exhausted" in err_str:
-            raise ModelDiscoveryError("rate_limited", f"Gemini API key has exceeded its free-tier quota: {e}")
+            raise ModelDiscoveryError("rate_limited", f"Gemini API key has exceeded its quota: {e}")
         else:
             raise ModelDiscoveryError("network_error", f"Failed to reach Gemini API: {e}")
 
 
-async def _discover_openai_compatible(provider: str, api_key: str) -> list[dict]:
-    base_url = OPENAI_COMPATIBLE_BASE_URLS.get(provider)
-    if not base_url:
-        return _static_models(provider)
-
-    url = f"{base_url}/v1/models"
+async def _discover_openai(api_key: str) -> list[dict]:
+    url = "https://api.openai.com/v1/models"
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
@@ -93,9 +102,9 @@ async def _discover_openai_compatible(provider: str, api_key: str) -> list[dict]
                 headers={"Authorization": f"Bearer {api_key}"},
             )
             if resp.status_code in (401, 403):
-                raise ModelDiscoveryError("invalid_key", f"{provider} API key is invalid or unauthorised.")
+                raise ModelDiscoveryError("invalid_key", "OpenAI API key is invalid or unauthorised.")
             if resp.status_code == 429:
-                raise ModelDiscoveryError("rate_limited", f"{provider} API key has exceeded its quota.")
+                raise ModelDiscoveryError("rate_limited", "OpenAI API key has exceeded its quota.")
             resp.raise_for_status()
             data = resp.json()
         models = []
@@ -103,79 +112,117 @@ async def _discover_openai_compatible(provider: str, api_key: str) -> list[dict]
             model_id = m.get("id", "")
             if not model_id:
                 continue
+            if not any(prefix in model_id for prefix in ("gpt-", "o1-", "o3-")):
+                continue
             models.append({
                 "id": model_id,
-                "provider": provider,
+                "provider": "openai",
                 "name": model_id,
                 "context_length": None,
-                "supports_vision": False,
-                "supports_tools": "gpt" in model_id.lower() or "llama" in model_id.lower(),
+                "supports_vision": "vision" in model_id.lower() or "gpt-4o" in model_id,
+                "supports_tools": True,
                 "supports_streaming": True,
+                "input_cost_per_1k": None,
+                "output_cost_per_1k": None,
             })
         if not models:
-            raise ModelDiscoveryError("empty_response", f"No models returned by {provider} API.")
+            raise ModelDiscoveryError("empty_response", "No models returned by OpenAI API")
         return models
     except ModelDiscoveryError:
         raise
     except Exception as e:
-        raise ModelDiscoveryError("network_error", f"Failed to reach {provider} API: {e}")
+        raise ModelDiscoveryError("network_error", f"Failed to reach OpenAI API: {e}")
 
 
-def _static_models(provider: str) -> list[dict]:
-    known_models = {
-        "gemini": [
-            {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash", "context_length": 1048576, "supports_vision": True, "supports_tools": True},
-            {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash", "context_length": 1048576, "supports_vision": True, "supports_tools": True},
-            {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro", "context_length": 2097152, "supports_vision": True, "supports_tools": True},
-            {"id": "gemini-2.0-flash-lite", "name": "Gemini 2.0 Flash Lite", "context_length": 1048576, "supports_vision": True, "supports_tools": False},
-        ],
-        "claude": [
-            {"id": "claude-3-5-sonnet-latest", "name": "Claude 3.5 Sonnet", "context_length": 200000, "supports_vision": True, "supports_tools": True},
-            {"id": "claude-3-5-haiku-latest", "name": "Claude 3.5 Haiku", "context_length": 200000, "supports_vision": True, "supports_tools": True},
-        ],
-        "openai": [
-            {"id": "gpt-4o", "name": "GPT-4o", "context_length": 128000, "supports_vision": True, "supports_tools": True},
-            {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "context_length": 128000, "supports_vision": True, "supports_tools": True},
-        ],
-        "groq": [
-            {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "context_length": 131072, "supports_tools": True},
-            {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B", "context_length": 131072, "supports_tools": True},
-            {"id": "llama-3.1-70b-versatile", "name": "Llama 3.1 70B", "context_length": 131072, "supports_tools": True},
-        ],
-        "perplexity": [
-            {"id": "sonar", "name": "Sonar", "context_length": 127000, "supports_tools": False},
-            {"id": "sonar-pro", "name": "Sonar Pro", "context_length": 127000, "supports_tools": False},
-        ],
-        "openrouter": [
-            {"id": "nousresearch/hermes-3-llama-3.1-405b", "name": "Hermes 3 Llama 3.1 405B", "context_length": 131072, "supports_tools": True},
-            {"id": "meta-llama/llama-3.3-70b-instruct", "name": "Llama 3.3 70B", "context_length": 131072, "supports_tools": True},
-            {"id": "mistralai/mixtral-8x22b-instruct", "name": "Mixtral 8x22B", "context_length": 65536, "supports_tools": True},
-        ],
-        "nvidia": [
-            {"id": "nvidia/llama-3.1-nemotron-70b-instruct", "name": "Nemotron 70B", "context_length": 128000, "supports_tools": True},
-            {"id": "meta/llama-3.1-405b-instruct", "name": "Llama 3.1 405B", "context_length": 128000, "supports_tools": True},
-            {"id": "meta/llama-3.1-70b-instruct", "name": "Llama 3.1 70B", "context_length": 128000, "supports_tools": True},
-            {"id": "meta/llama-3.1-8b-instruct", "name": "Llama 3.1 8B", "context_length": 128000, "supports_tools": True},
-            {"id": "mistralai/mistral-nemo-12b-instruct", "name": "Mistral Nemo 12B", "context_length": 128000, "supports_tools": True},
-            {"id": "mistralai/mixtral-8x22b-instruct", "name": "Mixtral 8x22B", "context_length": 65536, "supports_tools": True},
-            {"id": "google/gemma-2-27b-it", "name": "Gemma 2 27B", "context_length": 8192, "supports_tools": False},
-            {"id": "nvidia/nemotron-4-340b-reward", "name": "Nemotron-4 340B Reward", "context_length": 4096, "supports_tools": False},
-        ],
-    }
+async def _discover_groq(api_key: str) -> list[dict]:
+    url = "https://api.groq.com/openai/v1/models"
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.status_code in (401, 403):
+                raise ModelDiscoveryError("invalid_key", "Groq API key is invalid or unauthorised.")
+            if resp.status_code == 429:
+                raise ModelDiscoveryError("rate_limited", "Groq API key has exceeded its quota.")
+            resp.raise_for_status()
+            data = resp.json()
+        models = []
+        for m in data.get("data", []):
+            model_id = m.get("id", "")
+            if not model_id:
+                continue
+            lower_id = model_id.lower()
+            if "guard" in lower_id or "classif" in lower_id or "embed" in lower_id:
+                continue
+            models.append({
+                "id": model_id,
+                "provider": "groq",
+                "name": model_id,
+                "context_length": m.get("context_window"),
+                "supports_vision": "vision" in model_id.lower(),
+                "supports_tools": "tool" in model_id.lower() or "llama" in model_id.lower(),
+                "supports_streaming": True,
+                "input_cost_per_1k": None,
+                "output_cost_per_1k": None,
+            })
+        if not models:
+            raise ModelDiscoveryError("empty_response", "No models returned by Groq API")
+        return models
+    except ModelDiscoveryError:
+        raise
+    except Exception as e:
+        raise ModelDiscoveryError("network_error", f"Failed to reach Groq API: {e}")
 
-    entries = known_models.get(provider, [])
-    for m in entries:
-        m.setdefault("provider", provider)
-        m.setdefault("supports_vision", False)
-        m.setdefault("supports_tools", True)
-        m.setdefault("supports_streaming", True)
-        caps = get_capabilities(provider, m["id"])
-        if caps:
-            m["supports_vision"] = caps.supports_vision
-            m["supports_tools"] = caps.supports_tools
-            if caps.max_context_tokens:
-                m["context_length"] = caps.max_context_tokens
-    return entries
+
+async def _discover_nvidia(api_key: str) -> list[dict]:
+    try:
+        from langchain_nvidia_ai_endpoints import ChatNVIDIA
+        
+        available_models = await asyncio.to_thread(ChatNVIDIA.available_models, api_key)
+        
+        models = []
+        for m in available_models:
+            if isinstance(m, str):
+                model_id = m
+                model_name = m
+                context_length = None
+            elif isinstance(m, dict):
+                model_id = m.get("id", "")
+                model_name = m.get("name", model_id)
+                context_length = m.get("context_length")
+            else:
+                continue
+            
+            if not model_id:
+                continue
+                
+            models.append({
+                "id": model_id,
+                "provider": "nvidia",
+                "name": model_name,
+                "context_length": context_length,
+                "supports_vision": False,
+                "supports_tools": False,
+                "supports_streaming": True,
+                "input_cost_per_1k": None,
+                "output_cost_per_1k": None,
+            })
+        
+        if not models:
+            raise ModelDiscoveryError("empty_response", "No models returned by NVIDIA API")
+        return models
+    except ModelDiscoveryError:
+        raise
+    except Exception as e:
+        err_str = str(e).lower()
+        if "api key" in err_str or "api_key" in err_str or "invalid" in err_str or "401" in err_str or "unauthenticated" in err_str:
+            raise ModelDiscoveryError("invalid_key", f"NVIDIA API key is invalid: {e}")
+        elif "429" in err_str or "quota" in err_str or "rate" in err_str:
+            raise ModelDiscoveryError("rate_limited", f"NVIDIA API key has exceeded its quota: {e}")
+        else:
+            raise ModelDiscoveryError("network_error", f"Failed to reach NVIDIA API: {e}")
 
 
 def get_cached_models(uid: str, provider: str) -> Optional[list[dict]]:
@@ -200,3 +247,7 @@ def set_cached_models(uid: str, provider: str, models: list[dict]) -> None:
         "models": models,
         "fetched_at": datetime.now(timezone.utc),
     })
+
+
+def invalidate_cache(uid: str, provider: str) -> None:
+    db.collection("users").document(uid).collection("model_cache").document(provider).delete()

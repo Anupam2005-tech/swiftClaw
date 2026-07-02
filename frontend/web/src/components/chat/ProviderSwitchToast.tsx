@@ -30,12 +30,12 @@ export function ProviderSwitchToast({ from, to, reason, onClose }: ProviderSwitc
     switch (id.toLowerCase()) {
       case "gemini":
         return "Google Gemini";
-      case "claude":
-        return "Anthropic Claude";
       case "openai":
         return "OpenAI GPT";
       case "groq":
         return "Groq Cloud";
+      case "nvidia":
+        return "NVIDIA NIM";
       default:
         return id;
     }

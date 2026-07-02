@@ -89,7 +89,7 @@ export async function discoverModels(provider: ProviderId): Promise<ModelDiscove
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/keys/${provider}/models`,
-      { headers }
+      { headers, credentials: "include" }
     );
 
     if (!res.ok) {

@@ -10,7 +10,7 @@ def route_evaluation(state: AgentState) -> str:
     Conditional edge that checks if evaluation passed or max retries exceeded.
     """
     evaluation = state.get("evaluation") or {}
-    passed = evaluation.get("pass", True)
+    passed = evaluation.get("pass", False)
     retries = state.get("retries", 0)
     max_retries = state.get("max_retries", 3)
     

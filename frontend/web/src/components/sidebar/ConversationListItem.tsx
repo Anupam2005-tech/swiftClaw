@@ -3,7 +3,7 @@
 import React from "react";
 import { Conversation } from "../../lib/types/conversation";
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ConversationListItemProps {
@@ -63,7 +63,12 @@ export function ConversationListItem({
       >
         <MessageSquare className="h-3.5 w-3.5 shrink-0 text-sc-text-muted/70 group-hover:text-sc-text/80 transition-colors" />
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span className="text-xs truncate block">{conversation.title}</span>
+          <span className="text-xs truncate flex items-center gap-1.5">
+            <span className="truncate">{conversation.title}</span>
+            {conversation.pinned && (
+              <Pin className="h-2.5 w-2.5 text-sc-accent fill-sc-accent shrink-0 rotate-45" />
+            )}
+          </span>
           {conversation.last_message_preview && (
             <span className="text-[10px] text-sc-text-muted/60 truncate block leading-normal">
               {conversation.last_message_preview}

@@ -1,10 +1,7 @@
 export type ProviderId =
   | "gemini"
-  | "claude"
   | "openai"
   | "groq"
-  | "perplexity"
-  | "openrouter"
   | "nvidia";
 
 export interface ProviderInfo {

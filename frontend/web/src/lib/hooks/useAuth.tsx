@@ -112,6 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   body: JSON.stringify({
                     device_info: typeof navigator !== "undefined" ? navigator.userAgent : "Web",
                   }),
+                  credentials: "include",
                 }
               );
 
@@ -142,6 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   Authorization: `Bearer ${idToken}`,
                   "X-Session-Id": sessionId,
                 },
+                credentials: "include",
               }
             );
 

@@ -240,39 +240,36 @@ export default function ProfileSettingsPage() {
       </div>
 
       {/* Memory Import */}
-      <div className="border-t border-white/5 pt-4 space-y-3">
+      <div className="border-t border-white/5 pt-4 space-y-3 opacity-60">
         <h3 className="text-xs font-semibold text-sc-text uppercase tracking-wider flex items-center gap-2">
           <Brain className="h-4 w-4" />
           Memory
+          <span className="text-[8px] px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold uppercase tracking-wider">
+            Coming Soon
+          </span>
         </h3>
         <p className="text-[10px] text-sc-text-muted leading-normal">
-          Import personal context from text. Copy the prompt, run it with an AI on your raw notes, then paste the result below.
+          Import personal context from text. Copy the prompt, run it with an AI on your raw notes, then paste the result below. (This feature is coming soon).
         </p>
 
-        <div className="space-y-3 w-full max-w-2xl">
+        <div className="space-y-3 w-full max-w-2xl select-none pointer-events-none">
           <PromptCodeBlock />
 
           <textarea
             value={memoryInput}
             onChange={(e) => setMemoryInput(e.target.value)}
-            placeholder="Paste your personal notes, background, preferences here..."
-            className="w-full h-28 bg-black/30 border border-white/10 rounded-lg p-3 text-xs text-sc-text placeholder:text-sc-text-muted/40 resize-none outline-none focus:border-sc-accent transition-colors scrollbar-premium"
+            disabled
+            placeholder="Memory import coming soon..."
+            className="w-full h-28 bg-black/20 border border-white/5 rounded-lg p-3 text-xs text-sc-text/40 placeholder:text-sc-text-muted/30 resize-none outline-none cursor-not-allowed scrollbar-premium"
           />
 
           <div className="flex gap-2 flex-wrap">
             <Button
-              onClick={handleMemoryImport}
-              disabled={!memoryInput.trim() || memoryImporting}
-              className="h-9 px-5 bg-sc-accent text-accent-foreground font-semibold cursor-pointer hover:bg-sc-accent/90 disabled:opacity-50 text-xs"
+              disabled
+              className="h-9 px-5 bg-sc-accent/40 text-accent-foreground/50 font-semibold cursor-not-allowed text-xs"
             >
-              {memoryImporting ? <Spinner size="sm" /> : "Import to Memory"}
+              Import to Memory (Coming Soon)
             </Button>
-            {memoryImported && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-semibold animate-in fade-in duration-200">
-                <CheckCheck className="h-3 w-3" />
-                Imported
-              </span>
-            )}
           </div>
         </div>
       </div>

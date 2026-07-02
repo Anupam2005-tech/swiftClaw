@@ -10,7 +10,7 @@ import structlog
 from app.db.firestore import db
 from app.core.auth.sessions import create_session, delete_session, delete_all_sessions
 from app.core.auth.middleware import get_current_user
-from app.core.providers.model_discovery import _static_models
+
 
 router = APIRouter()
 security = HTTPBearer()
@@ -266,10 +266,8 @@ class PublicModelsResponse(BaseModel):
 @router.get("/public/models/{provider}", response_model=PublicModelsResponse)
 async def get_public_models(provider: str):
     """
-    Returns static fallback models for a provider.
-    Used during onboarding when user hasn't added API keys yet.
-    No authentication required.
+    Model discovery requires an authenticated API key.
+    Returns empty list - add an API key to discover models.
     """
-    models = _static_models(provider)
-    return PublicModelsResponse(provider=provider, models=models)
+    return PublicModelsResponse(provider=provider, models=[])
 

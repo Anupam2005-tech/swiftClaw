@@ -1,13 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { useConversations } from "@/lib/hooks/useConversations";
 import { useChatStream } from "@/lib/hooks/useChatStream";
 import { MessageList } from "./MessageList";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import { ModelDropdown } from "./ModelDropdown";
 import { ProviderSwitchToast } from "./ProviderSwitchToast";
-import { Activity, Terminal } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
+import {
+  Activity,
+  Terminal,
+  MoreVertical,
+  Share2,
+  Pin,
+  Trash2
+} from "lucide-react";
 import { FileAttachment } from "@/lib/types/conversation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { api } from "@/lib/api/client";
@@ -15,6 +23,14 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useMobileSidebar } from "@/lib/contexts/SidebarContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface ChatWindowProps {
   conversationId: string;
@@ -38,28 +54,62 @@ function fileToAttachment(file: File): Promise<FileAttachment> {
 
 export function ChatWindow({ conversationId }: ChatWindowProps) {
   const { toggleMobileSidebar } = useMobileSidebar();
-  const notifySidebar = () => {
+  const { toast } = useToast();
+  const notifySidebar = useCallback(() => {
     window.dispatchEvent(new CustomEvent("conversations-updated"));
-  };
+  }, []);
 
   const {
     messages,
     messagesLoading,
     refreshMessages,
     setMessages,
+    conversations,
+    pinConversation,
+    deleteConversation,
   } = useConversations(conversationId);
+
+  const currentConversation = conversations.find((c) => c.id === conversationId);
+  const isPinned = currentConversation?.pinned || false;
+  const [sharing, setSharing] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+
+  const handleShare = async () => {
+    try {
+      setSharing(true);
+      const res = await api.shareConversation(conversationId);
+      const shareUrl = `${window.location.origin}/chat/shared/${res.id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link Copied!",
+        description: "A public, read-only link has been copied to your clipboard.",
+      });
+    } catch (e) {
+      console.error("Failed to share conversation:", e);
+      toast({
+        title: "Error Sharing",
+        description: "Could not generate share link. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const onStreamComplete = useCallback(() => {
+    refreshMessages();
+    notifySidebar();
+  }, [refreshMessages, notifySidebar]);
 
   const {
     sendMessage,
     stopGeneration,
     regenerateMessage,
+    editUserMessage,
     streaming,
     providerSwitch,
     setProviderSwitch,
-  } = useChatStream(conversationId, () => {
-    refreshMessages();
-    notifySidebar();
-  });
+  } = useChatStream(conversationId, onStreamComplete);
 
   const { user } = useAuth();
   const [nickname, setNickname] = React.useState(() => {
@@ -92,10 +142,27 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
   }, [user]);
 
   const displayName = nickname || (user?.email ? user.email.split("@")[0] : "");
-  const [webSearchEnabled, setWebSearchEnabled] = React.useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = React.useState(true);
+
+  // Load from localStorage on mount
+  React.useEffect(() => {
+    const saved = localStorage.getItem("sc_web_search_enabled");
+    if (saved !== null) {
+      setWebSearchEnabled(saved === "true");
+    }
+  }, []);
+
+  // Save to localStorage when state changes
+  const handleWebSearchChange = (enabled: boolean) => {
+    setWebSearchEnabled(enabled);
+    localStorage.setItem("sc_web_search_enabled", String(enabled));
+  };
+
   const formattedName = displayName
     ? displayName.charAt(0).toUpperCase() + displayName.slice(1)
     : "";
+
+  const userMessages = messages.filter((m) => m.role === "user").map((m) => m.content);
 
   const handleSend = async (text: string, rawFiles?: File[]) => {
     const attachments: FileAttachment[] = [];
@@ -110,7 +177,7 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
       }
     }
     notifySidebar();
-    sendMessage(text, attachments, "chat", messages, setMessages, webSearchEnabled);
+    sendMessage(text, attachments, rawFiles, "chat", messages, setMessages, webSearchEnabled);
   };
 
   return (
@@ -122,11 +189,11 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
         )}
 
         {/* Top Header Bar */}
-        <header className="h-14 border-b border-[var(--chat-border)] px-6 flex items-center justify-between shrink-0 bg-[var(--chat-header-bg)] select-none z-10">
+        <header className="h-14 px-6 flex items-center justify-between shrink-0 bg-transparent border-none select-none z-10">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={toggleMobileSidebar}
-              className="lg:hidden flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.02] hover:bg-white/5 text-sc-text-muted hover:text-sc-text transition-colors cursor-pointer"
+              className="lg:hidden flex h-8 w-8 items-center justify-center rounded-full text-sc-text-muted hover:text-sc-text transition-colors cursor-pointer bg-transparent border-none hover:bg-white/5"
               aria-label="Open sidebar"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -135,10 +202,44 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
                 <path d="M3 13H15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </button>
-            <Activity className="h-4 w-4 text-green-500 shrink-0" />
-            <span className="text-xs font-semibold text-sc-text tracking-wide truncate max-w-[240px]">
-              Workspace Session
-            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex h-9 w-9 md:h-8 md:w-8 items-center justify-center rounded-md text-sc-text-muted hover:text-sc-text transition-colors cursor-pointer bg-transparent border-none hover:bg-white/5 outline-none">
+                  <MoreVertical className="h-4.5 w-4.5 md:h-4 md:w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-[#1e1f20] border border-white/10 text-sc-text z-[9999]" style={{ backgroundColor: '#1E1F20' }}>
+
+                <DropdownMenuItem
+                  onClick={() => pinConversation(conversationId, !isPinned)}
+                  className="flex items-center gap-2 cursor-pointer text-xs text-sc-text hover:text-sc-text hover:bg-white/5 focus:bg-white/5 focus:text-sc-text data-[highlighted]:bg-white/5 data-[highlighted]:text-sc-text transition-colors outline-none"
+                >
+                  <Pin className={cn("h-3.5 w-3.5 rotate-45", isPinned && "text-sc-accent fill-sc-accent")} />
+                  {isPinned ? "Unpin Chat" : "Pin Chat"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleShare}
+                  disabled={sharing}
+                  className="flex items-center gap-2 cursor-pointer text-xs text-sc-text hover:text-sc-text hover:bg-white/5 focus:bg-white/5 focus:text-sc-text data-[highlighted]:bg-white/5 data-[highlighted]:text-sc-text transition-colors outline-none"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  {sharing ? "Sharing..." : "Share Link"}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-white/5" />
+
+                <DropdownMenuItem
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="flex items-center gap-2 cursor-pointer text-xs text-sc-text hover:text-sc-text hover:bg-white/5 focus:bg-white/5 focus:text-sc-text data-[highlighted]:bg-white/5 data-[highlighted]:text-sc-text transition-colors outline-none"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Chat
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -171,7 +272,7 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
                   className="w-full max-w-2xl flex flex-col gap-2"
                 >
                   <div className="flex items-center justify-between px-1">
-                    <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={setWebSearchEnabled} />
+                    <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={handleWebSearchChange} />
 
                     
                     <span className="text-[10px] text-sc-text-muted/30 font-mono">
@@ -183,6 +284,7 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
                     onStop={stopGeneration}
                     isLoading={streaming}
                     placeholder="Message swiftClaw..."
+                    userMessages={userMessages}
                   />
                 </motion.div>
               </div>
@@ -206,7 +308,8 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
             <MessageList
               messages={messages}
               loading={messagesLoading}
-              onRegenerate={() => regenerateMessage(messages, setMessages)}
+              onRegenerate={(id) => regenerateMessage(id, messages, setMessages, webSearchEnabled)}
+              onEdit={(id, text) => editUserMessage(id, text, messages, setMessages, webSearchEnabled)}
             />
           )}
         </div>
@@ -221,7 +324,7 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
             className="w-full max-w-2xl flex flex-col gap-2"
           >
             <div className="flex items-center justify-between px-1">
-              <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={setWebSearchEnabled} />
+              <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={handleWebSearchChange} />
               <span className="text-[10px] text-sc-text-muted/30 font-mono">
                 swiftClaw
               </span>
@@ -231,10 +334,40 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
               onStop={stopGeneration}
               isLoading={streaming}
               placeholder="Message swiftClaw..."
+              userMessages={userMessages}
             />
           </motion.div>
         </div>
       </div>
+
+      <Modal
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        title="Delete chat?"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-[12px] text-sc-text-muted leading-relaxed">
+            This will delete prompts, responses and feedback from your swiftClaw activity, plus any content that you created.
+          </p>
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={() => setIsDeleteDialogOpen(false)}
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-md text-sc-text-muted hover:text-sc-text hover:bg-white/5 transition-colors cursor-pointer outline-none bg-transparent border-none"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                deleteConversation(conversationId);
+                setIsDeleteDialogOpen(false);
+              }}
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-md border border-white/10 text-sc-text hover:text-sc-text bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer outline-none"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
     </Skeleton>
   );
 }

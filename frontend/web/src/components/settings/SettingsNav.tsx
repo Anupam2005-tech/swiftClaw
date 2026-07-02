@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Key, Sliders, ShieldAlert, Cpu, BarChart, User, History } from "lucide-react";
+import { Key, Sliders, ShieldAlert, Cpu, User, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -11,9 +11,8 @@ const NAV_ITEMS = [
   { href: "/settings/api-keys", label: "API Keys", icon: Key },
   { href: "/settings/history", label: "History", icon: History },
   { href: "/settings/model-preferences", label: "Task Mapping", icon: Sliders },
-  { href: "/settings/integrations", label: "MCP", icon: Cpu },
+  { href: "/settings/integrations", label: "MCP", icon: Cpu, comingSoon: true },
   { href: "/settings/sessions", label: "Sessions", icon: ShieldAlert },
-  { href: "/settings/usage", label: "Usage", icon: BarChart },
 ];
 
 export function SettingsNav() {
@@ -24,6 +23,23 @@ export function SettingsNav() {
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;
+
+        if (item.comingSoon) {
+          return (
+            <div
+              key={item.href}
+              className="flex items-center justify-between gap-3 px-3 py-2 rounded-md text-xs font-semibold text-sc-text-muted/30 select-none cursor-not-allowed shrink-0 whitespace-nowrap"
+            >
+              <span className="flex items-center gap-3">
+                <Icon className="h-4 w-4 shrink-0 opacity-40" />
+                {item.label}
+              </span>
+              <span className="text-[8px] px-1 py-0.5 rounded border border-amber-500/20 bg-amber-500/5 text-amber-400/70 font-bold uppercase tracking-wider font-mono">
+                Soon
+              </span>
+            </div>
+          );
+        }
 
         return (
           <Link

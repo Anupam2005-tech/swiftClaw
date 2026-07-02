@@ -101,6 +101,7 @@ interface PromptInputContextType {
   maxHeight: number | string;
   onSubmit?: () => void;
   disabled?: boolean;
+  userMessages?: string[];
 }
 const PromptInputContext = React.createContext<PromptInputContextType>({
   isLoading: false,
@@ -109,6 +110,7 @@ const PromptInputContext = React.createContext<PromptInputContextType>({
   maxHeight: 240,
   onSubmit: undefined,
   disabled: false,
+  userMessages: undefined,
 });
 function usePromptInput() {
   const context = React.useContext(PromptInputContext);
@@ -129,9 +131,10 @@ interface PromptInputProps {
   onDragOver?: (e: React.DragEvent) => void;
   onDragLeave?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
+  userMessages?: string[];
 }
 const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
-  ({ className, isLoading = false, maxHeight = 240, value, onValueChange, onSubmit, children, disabled = false, onDragOver, onDragLeave, onDrop }, ref) => {
+  ({ className, isLoading = false, maxHeight = 240, value, onValueChange, onSubmit, children, disabled = false, onDragOver, onDragLeave, onDrop, userMessages }, ref) => {
     const [internalValue, setInternalValue] = React.useState(value || "");
     const handleChange = (newValue: string) => {
       setInternalValue(newValue);
@@ -139,13 +142,12 @@ const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
     };
     return (
       <TooltipProvider>
-        <PromptInputContext.Provider value={{ isLoading, value: value ?? internalValue, setValue: onValueChange ?? handleChange, maxHeight, onSubmit, disabled }}>
+        <PromptInputContext.Provider value={{ isLoading, value: value ?? internalValue, setValue: onValueChange ?? handleChange, maxHeight, onSubmit, disabled, userMessages }}>
           <div
             ref={ref}
             className={cn(
               "rounded-2xl border border-[var(--prompt-border)] bg-[var(--prompt-bg)] p-2 shadow-lg transition-all duration-200",
               "focus-within:border-[var(--prompt-border-focus)]",
-              isLoading && "border-red-500/50",
               className
             )}
             onDragOver={onDragOver}
@@ -173,8 +175,10 @@ const PromptInputTextarea: React.FC<PromptInputTextareaProps & React.ComponentPr
   placeholder,
   ...props
 }) => {
-  const { value, setValue, maxHeight, onSubmit, disabled } = usePromptInput();
+  const { value, setValue, maxHeight, onSubmit, disabled, userMessages } = usePromptInput();
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const [historyIndex, setHistoryIndex] = React.useState<number>(-1);
+  const [draft, setDraft] = React.useState<string>("");
 
   React.useEffect(() => {
     if (disableAutosize || !textareaRef.current) return;
@@ -189,6 +193,26 @@ const PromptInputTextarea: React.FC<PromptInputTextareaProps & React.ComponentPr
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSubmit?.();
+      setHistoryIndex(-1);
+    } else if (e.key === "ArrowUp" && userMessages && userMessages.length > 0 && e.currentTarget.selectionStart === 0) {
+      e.preventDefault();
+      const nextIndex = historyIndex + 1;
+      if (nextIndex < userMessages.length) {
+        if (historyIndex === -1) {
+          setDraft(value);
+        }
+        setHistoryIndex(nextIndex);
+        setValue(userMessages[userMessages.length - 1 - nextIndex]);
+      }
+    } else if (e.key === "ArrowDown" && userMessages && userMessages.length > 0 && historyIndex > -1) {
+      e.preventDefault();
+      const nextIndex = historyIndex - 1;
+      setHistoryIndex(nextIndex);
+      if (nextIndex === -1) {
+        setValue(draft);
+      } else {
+        setValue(userMessages[userMessages.length - 1 - nextIndex]);
+      }
     }
     onKeyDown?.(e);
   };
@@ -197,7 +221,10 @@ const PromptInputTextarea: React.FC<PromptInputTextareaProps & React.ComponentPr
     <Textarea
       ref={textareaRef}
       value={value}
-      onChange={(e) => setValue(e.target.value)}
+      onChange={(e) => {
+        setValue(e.target.value);
+        setHistoryIndex(-1);
+      }}
       onKeyDown={handleKeyDown}
       className={cn("text-sm", className)}
       disabled={disabled}
@@ -264,6 +291,7 @@ interface PromptInputBoxProps {
   isLoading?: boolean;
   placeholder?: string;
   className?: string;
+  userMessages?: string[];
 }
 
 interface PromptAttachment {
@@ -277,7 +305,7 @@ interface PromptAttachment {
 }
 
 export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref: React.Ref<HTMLDivElement>) => {
-  const { onSend = () => {}, onStop, isLoading = false, placeholder = "Type your message...", className } = props;
+  const { onSend = () => {}, onStop, isLoading = false, placeholder = "Type your message...", className, userMessages } = props;
   const [input, setInput] = React.useState("");
   const [attachments, setAttachments] = React.useState<PromptAttachment[]>([]);
   const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
@@ -411,11 +439,12 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
         isLoading={isLoading}
         onSubmit={handleSubmit}
         className={cn("prompt-input-box w-full relative", className)}
-        disabled={isLoading}
+        disabled={false}
         ref={ref || promptBoxRef}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        userMessages={userMessages}
       >
         {/* Attachments preview */}
         {attachments.length > 0 && (
@@ -476,7 +505,6 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                   iconButtonClass,
                   dropdownOpen && "bg-white/10 text-white/90"
                 )}
-                disabled={isLoading}
               >
                 <Paperclip className="h-4 w-4" />
               </button>
@@ -598,29 +626,37 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
             </AnimatePresence>
           </div>
 
-          <PromptInputAction tooltip={isLoading ? "Stop" : "Send message"}>
-            <button
-              className={cn(
-                "h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer",
-                isLoading
-                  ? "bg-white/10 text-white/70 hover:bg-white/15"
-                  : hasContent
-                  ? "bg-[var(--prompt-send-bg)] text-[var(--prompt-send-text)] hover:opacity-90"
-                  : "bg-[var(--prompt-button-bg)] text-white/40"
-              )}
-              onClick={() => {
-                if (isLoading) { onStop?.(); return; }
-                if (hasContent) handleSubmit();
-              }}
-              disabled={false}
-            >
-              {isLoading ? (
-                <Square className="h-3.5 w-3.5 fill-current" />
-              ) : (
+          <div className="flex items-center gap-1.5">
+            {isLoading && (
+              <PromptInputAction tooltip="Stop generation">
+                <button
+                  type="button"
+                  className="h-8 w-8 rounded-full flex items-center justify-center bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200 cursor-pointer"
+                  onClick={onStop}
+                >
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                </button>
+              </PromptInputAction>
+            )}
+
+            <PromptInputAction tooltip="Send message">
+              <button
+                type="button"
+                className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer",
+                  hasContent
+                    ? "bg-[var(--prompt-send-bg)] text-[var(--prompt-send-text)] hover:opacity-90"
+                    : "bg-[var(--prompt-button-bg)] text-white/40"
+                )}
+                onClick={() => {
+                  if (hasContent) handleSubmit();
+                }}
+                disabled={!hasContent}
+              >
                 <ArrowUp className="h-4 w-4" />
-              )}
-            </button>
-          </PromptInputAction>
+              </button>
+            </PromptInputAction>
+          </div>
         </PromptInputActions>
       </PromptInput>
 

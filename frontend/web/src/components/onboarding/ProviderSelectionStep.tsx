@@ -16,13 +16,6 @@ const PROVIDERS: ProviderInfo[] = [
     capabilities: ["chat", "file_analysis", "image_analysis", "video_analysis"],
   },
   {
-    id: "claude",
-    name: "Anthropic Claude",
-    description: "State-of-the-art coding and reasoning assistant.",
-    keyUrl: "https://console.anthropic.com/",
-    capabilities: ["chat", "file_analysis", "image_analysis"],
-  },
-  {
     id: "openai",
     name: "OpenAI GPT",
     description: "General intelligence, image, and vision specialist.",
@@ -34,20 +27,6 @@ const PROVIDERS: ProviderInfo[] = [
     name: "Groq Cloud",
     description: "Ultra-low latency inference using Llama 3.",
     keyUrl: "https://console.groq.com/keys",
-    capabilities: ["chat"],
-  },
-  {
-    id: "perplexity",
-    name: "Perplexity AI",
-    description: "Online grounded web search model access.",
-    keyUrl: "https://www.perplexity.ai/settings/api",
-    capabilities: ["chat", "web_search"],
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    description: "Aggregate pricing access to hundreds of open-source models.",
-    keyUrl: "https://openrouter.ai/keys",
     capabilities: ["chat"],
   },
   {

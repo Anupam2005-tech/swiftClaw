@@ -5,7 +5,7 @@ from datetime import datetime
 
 from app.core.auth.middleware import get_current_user
 from app.core.vault.vault import store_api_key, list_api_keys, remove_api_key, get_api_key
-from app.core.providers.model_discovery import discover_models, get_cached_models, set_cached_models, ModelDiscoveryError
+from app.core.providers.model_discovery import discover_models, get_cached_models, set_cached_models, invalidate_cache, ModelDiscoveryError
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -68,6 +68,41 @@ async def delete_key(
     uid = current_user["uid"]
     remove_api_key(uid, provider)
     logger.info("api_key_removed", uid=uid, provider=provider)
+
+@router.post("/{provider}/refresh", status_code=status.HTTP_200_OK)
+async def refresh_provider_models(
+    provider: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Forces re-discovery of models for a provider by invalidating the cache
+    and fetching fresh models from the API.
+    """
+    uid = current_user["uid"]
+    
+    api_key = get_api_key(uid, provider)
+    if not api_key:
+        raise HTTPException(status_code=404, detail={"code": "key_not_found", "message": f"No API key found for {provider}"})
+    
+    invalidate_cache(uid, provider)
+    
+    try:
+        models = await discover_models(provider, api_key)
+        seen = set()
+        deduped = []
+        for m in models:
+            if m["id"] not in seen:
+                seen.add(m["id"])
+                deduped.append(m)
+        set_cached_models(uid, provider, deduped)
+        logger.info("models_refreshed", uid=uid, provider=provider, count=len(deduped))
+        return {"provider": provider, "models": deduped, "cached": False, "error": None}
+    except ModelDiscoveryError as e:
+        logger.warning("model_refresh_error", provider=provider, code=e.code, detail=e.detail)
+        return {"provider": provider, "models": [], "cached": False, "error": {"code": e.code, "message": e.detail}}
+    except Exception as e:
+        logger.error("model_refresh_unexpected", provider=provider, error=str(e))
+        return {"provider": provider, "models": [], "cached": False, "error": {"code": "unknown", "message": str(e)}}
 
 @router.get("/{provider}/models")
 async def get_provider_models(

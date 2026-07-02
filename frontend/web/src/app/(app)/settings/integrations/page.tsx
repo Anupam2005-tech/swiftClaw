@@ -1,29 +1,20 @@
 "use client";
 
 import React from "react";
-import { IntegrationsGrid } from "@/components/settings/IntegrationsGrid";
-import { useIntegrations } from "@/lib/hooks/useIntegrations";
+import { Cpu } from "lucide-react";
 
 export default function IntegrationsSettingsPage() {
-  const { integrations, loading, toggleIntegration } = useIntegrations();
-
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-      {/* Pane header */}
-      <div className="border-b border-white/5 pb-4">
-        <h2 className="text-sm font-semibold text-sc-text uppercase tracking-wider">
-          MCP Integrations
-        </h2>
-        <p className="text-[10px] text-sc-text-muted mt-1 leading-normal">
-          Connect your local or cloud services to the model context protocol (MCP) server.
-        </p>
+    <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in duration-300">
+      <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
+        <Cpu className="h-6 w-6 animate-pulse" />
       </div>
-
-      <IntegrationsGrid
-        integrations={integrations}
-        onToggle={toggleIntegration}
-        loading={loading}
-      />
+      <h2 className="text-sm font-semibold text-sc-text uppercase tracking-wider">
+        MCP Integrations Coming Soon
+      </h2>
+      <p className="text-[10px] text-sc-text-muted mt-2 max-w-sm leading-normal">
+        Connect your local or cloud services to the model context protocol (MCP) server. This feature is currently under development.
+      </p>
     </div>
   );
 }

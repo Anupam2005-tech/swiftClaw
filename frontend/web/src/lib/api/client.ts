@@ -1,15 +1,15 @@
 import { User, ActiveSession } from "../types/user";
 import { KeyMeta, ProviderId, ModelPreferences } from "../types/provider";
-import { Conversation, Message, FileAttachment } from "../types/conversation";
+import { Conversation, Message, FileAttachment, LobbyImage } from "../types/conversation";
 import { Integration, IntegrationId } from "../types/integration";
 import { MediaJob, SSEEvent } from "../types/agent";
 
 const isBrowser = typeof window !== "undefined";
 
 const DEFAULT_PREFERENCES: ModelPreferences = {
-  chat: { task: "chat", provider: "claude", model: "claude-3-5-sonnet-latest" },
-  web_search: { task: "web_search", provider: "perplexity", model: "sonar" },
-  file_analysis: { task: "file_analysis", provider: "claude", model: "claude-3-5-sonnet-latest" },
+  chat: { task: "chat", provider: "gemini", model: "gemini-1.5-flash" },
+  web_search: { task: "web_search", provider: "gemini", model: "gemini-1.5-flash" },
+  file_analysis: { task: "file_analysis", provider: "gemini", model: "gemini-1.5-flash" },
   image_analysis: { task: "image_analysis", provider: "openai", model: "gpt-4o" },
   image_generation: { task: "image_generation", provider: "openai", model: "dall-e-3" },
   video_analysis: { task: "video_analysis", provider: "gemini", model: "gemini-1.5-pro" },
@@ -61,6 +61,7 @@ async function apiRequest(path: string, options: RequestInit = {}) {
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -185,6 +186,14 @@ export const api = {
     await apiRequest("/api/auth/delete-account", { method: "DELETE" });
   },
 
+  async refreshModels(provider: ProviderId): Promise<{ provider: string; models: any[]; error?: any }> {
+    return await apiRequest(`/api/keys/${provider}/refresh`, { method: "POST" });
+  },
+
+  async getLobbyImages(): Promise<LobbyImage[]> {
+    return await apiRequest("/api/chat/lobby-images");
+  },
+
   // Model Preferences
   async getPreferences(): Promise<ModelPreferences> {
     try {
@@ -281,6 +290,7 @@ export const api = {
       last_message_preview: c.summary || "",
       created_at: c.created_at,
       updated_at: c.updated_at,
+      pinned: c.pinned || false,
     }));
   },
 
@@ -289,7 +299,29 @@ export const api = {
   },
 
   async getMessages(conversationId: string): Promise<Message[]> {
-    return await apiRequest(`/api/chat/${conversationId}/messages`);
+    const raw = await apiRequest(`/api/chat/${conversationId}/messages`) as any[];
+    return raw.map((m) => {
+      const msg: Message = {
+        id: m.id,
+        role: m.role,
+        content: m.content || "",
+        created_at: m.created_at,
+        provider: m.metadata?.provider,
+        model: m.metadata?.model,
+        status: m.status || "completed",
+        attachments: m.attachments?.map((att: any) => ({
+          name: att.name,
+          size: att.size || 0,
+          type: att.type || att.mime_type,
+          mime_type: att.mime_type,
+          content: att.content,
+          dataUrl: att.type?.startsWith("image/")
+            ? `data:${att.mime_type || att.type};base64,${att.content}`
+            : undefined,
+        })),
+      };
+      return msg;
+    });
   },
 
   async createConversation(title?: string): Promise<Conversation> {
@@ -325,13 +357,14 @@ export const api = {
     };
   },
 
-  // Chat Streaming SSE
   async *sendChatMessage(
     conversationId: string,
     message: string,
-    files: FileAttachment[] = [],
+    rawFiles: File[] = [],
     mode: "chat" | "image" | "video" = "chat",
-    webSearch: boolean = false
+    webSearch: boolean = false,
+    userMessageId?: string,
+    assistantMessageId?: string
   ): AsyncGenerator<SSEEvent, void, unknown> {
     lastActiveConversationId = conversationId;
     const url = `${getApiUrl()}/api/chat/stream`;
@@ -342,14 +375,16 @@ export const api = {
     formData.append("conversation_id", conversationId);
     formData.append("message", message);
     formData.append("web_search", webSearch ? "true" : "false");
+    if (userMessageId) {
+      formData.append("user_message_id", userMessageId);
+    }
+    if (assistantMessageId) {
+      formData.append("assistant_message_id", assistantMessageId);
+    }
 
-    if (files && files.length > 0) {
-      for (const f of files) {
-        if (f.dataUrl && f.dataUrl.startsWith("data:")) {
-          const res = await fetch(f.dataUrl);
-          const blob = await res.blob();
-          formData.append("files", blob, f.name);
-        }
+    if (rawFiles && rawFiles.length > 0) {
+      for (const f of rawFiles) {
+        formData.append("files", f, f.name);
       }
     }
 
@@ -365,6 +400,7 @@ export const api = {
       method: "POST",
       headers,
       body: formData,
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -412,6 +448,7 @@ export const api = {
       try {
         await apiRequest(`/api/chat/stop?conversation_id=${encodeURIComponent(targetId)}`, {
           method: "POST",
+          body: new URLSearchParams({ conversation_id: targetId }),
         });
       } catch (e) {
         console.error("Failed to request stream termination:", e);
@@ -442,5 +479,25 @@ export const api = {
       url: "",
       created_at: new Date().toISOString(),
     };
+  },
+
+  // Pinning and Sharing Conversations
+  async shareConversation(conversationId: string): Promise<{ id: string; title: string }> {
+    return await apiRequest(`/api/chat/${conversationId}/share`, {
+      method: "POST",
+    });
+  },
+
+  async getSharedConversation(conversationId: string): Promise<any> {
+    return await apiRequest(`/api/chat/shared/${conversationId}`, {
+      method: "GET",
+    });
+  },
+
+  async pinConversation(conversationId: string, pinned: boolean): Promise<{ status: string; pinned: boolean }> {
+    return await apiRequest(`/api/chat/${conversationId}/pin`, {
+      method: "POST",
+      body: JSON.stringify({ pinned }),
+    });
   },
 };

@@ -7,6 +7,7 @@ import { Input } from "../ui/input";
 import { ArrowRight, Sparkles, Shield, Gauge, User, Briefcase } from "lucide-react";
 import { auth } from "../../lib/firebase/config";
 import type { UserProfile } from "../../lib/hooks/useOnboardingStatus";
+import { Select } from "@/components/ui/select";
 
 interface WelcomeStepProps {
   onNext: () => void;
@@ -93,16 +94,15 @@ export function WelcomeStep({ onNext, userProfile, setUserProfile }: WelcomeStep
             <Briefcase className="h-3 w-3" />
             Profession
           </label>
-          <select
+          <Select
             value={profession}
-            onChange={(e) => setProfession(e.target.value)}
-            className="bg-black/30 border border-white/10 rounded-lg h-10 px-3 text-sm text-sc-text outline-none focus:border-sc-accent transition-colors appearance-none cursor-pointer"
-          >
-            <option value="">Select your profession</option>
-            {PROFESSIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "Select your profession" },
+              ...PROFESSIONS.map((p) => ({ value: p, label: p })),
+            ]}
+            onChange={(v) => setProfession(v)}
+            placeholder="Select your profession"
+          />
         </div>
       </motion.div>
 

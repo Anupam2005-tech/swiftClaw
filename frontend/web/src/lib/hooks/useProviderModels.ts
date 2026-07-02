@@ -42,7 +42,7 @@ export function useAllProviderModels(
   const [modelMap, setModelMap] = useState<Partial<Record<ProviderId, ModelInfo[]>>>({});
   const [errorMap, setErrorMap] = useState<Partial<Record<ProviderId, ModelDiscoveryError | null>>>({});
   const [loading, setLoading] = useState(false);
-  const providersKey = providers.sort().join(",");
+  const providersKey = [...providers].sort().join(",");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchAll = useCallback(async (forceBustCache: boolean = false) => {

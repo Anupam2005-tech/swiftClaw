@@ -1,6 +1,7 @@
 import json
 from app.core.agent.state import AgentState
-from app.core.providers.factory import get_adapter
+from app.core.providers.factory import get_adapter, get_default_model_for_user
+from app.core.providers.model_discovery import get_cached_models
 from app.core.vault.vault import get_api_key
 import structlog
 
@@ -16,7 +17,6 @@ async def evaluator_node(state: AgentState) -> dict:
     output = state.get("output", "")
     
     provider_eval = state.get("provider_evaluator")
-    # Determine which model/provider to use for evaluation
     if not provider_eval:
         logger.warn("no_evaluator_configured_falling_back")
         return {"evaluation": {"pass": True, "confidence": 1.0, "critique": "No evaluator configured, auto-passing."}}
@@ -25,24 +25,34 @@ async def evaluator_node(state: AgentState) -> dict:
     if not eval_key:
         logger.warn("evaluator_key_missing", provider=provider_eval)
         return {"evaluation": {"pass": True, "confidence": 1.0, "critique": "Evaluator key missing, auto-passing."}}
-        
-    # We select the model. For v1.0, let's use standard default models for each provider
-    model = state.get("model_preferences", {}).get("evaluation")
+    
+    # Use user's cached default model for this provider
+    model = get_default_model_for_user(user_id, provider_eval)
     if not model:
-        # Default models based on provider
-        if provider_eval == "openai":
-            model = "gpt-4o"
-        elif provider_eval == "claude":
-            model = "claude-3-5-sonnet-latest"
-        elif provider_eval == "gemini":
-            model = "gemini-2.0-flash"
-        elif provider_eval == "groq":
-            model = "llama-3.1-70b-versatile"
-        else:
-            model = "sonar" if provider_eval == "perplexity" else ""
-            
+        # Fallback to generator's provider/model if evaluator has no cached models
+        generator_provider = state.get("provider_generator")
+        generator_model = state.get("model_generator")
+        if generator_provider and generator_provider != provider_eval:
+            alt_key = get_api_key(user_id, generator_provider)
+            if alt_key and generator_model:
+                logger.info("evaluator_fallback_to_generator", fallback_provider=generator_provider, fallback_model=generator_model)
+                provider_eval = generator_provider
+                eval_key = alt_key
+                model = generator_model
+        if not model:
+            logger.warn("evaluator_no_model_available", provider=provider_eval)
+            return {"evaluation": {"pass": True, "confidence": 1.0, "critique": "No models available for evaluator, auto-passing."}}
+    
     try:
-        adapter = get_adapter(provider_eval, eval_key, model)
+        # Look up capabilities for adapter
+        cached = get_cached_models(user_id, provider_eval) or []
+        capabilities = None
+        for m in cached:
+            if m.get("id") == model:
+                capabilities = m
+                break
+        
+        adapter = get_adapter(provider_eval, eval_key, model, capabilities)
         
         system_prompt = (
             "You are an expert AI evaluator. Assess the assistant's output for correctness, completeness, and adherence to constraints.\n"
@@ -62,12 +72,12 @@ async def evaluator_node(state: AgentState) -> dict:
         ]
         
         full_content = ""
+        
         async for chunk in adapter.stream(messages):
             if chunk["type"] == "text" and chunk["content"]:
                 full_content += chunk["content"]
-                
+        
         # Parse the JSON response
-        # Clean up Markdown code blocks if LLM returns them
         cleaned_json = full_content.strip()
         if cleaned_json.startswith("```json"):
             cleaned_json = cleaned_json[7:]
@@ -77,7 +87,6 @@ async def evaluator_node(state: AgentState) -> dict:
         
         parsed = json.loads(cleaned_json)
         
-        # Normalize fields
         val_pass = bool(parsed.get("pass", True))
         val_confidence = float(parsed.get("confidence", 1.0))
         val_critique = str(parsed.get("critique", ""))

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     
     # Core
     summary_every_n_messages: int = 20
-    max_upload_size_bytes: int = 50 * 1024 * 1024
+    max_upload_size_bytes: int = 10 * 1024 * 1024
     
     # Rate Limiting
     rate_limit_chat: str = "20/minute"

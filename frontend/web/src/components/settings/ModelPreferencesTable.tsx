@@ -7,6 +7,7 @@ import { PROVIDERS } from "../onboarding/ProviderSelectionStep";
 import { AlertCircle, Sliders } from "lucide-react";
 import { useAllProviderModels } from "@/lib/hooks/useProviderModels";
 import { ModelSelect } from "@/components/ui/model-select";
+import { Select } from "@/components/ui/select";
 
 interface ModelPreferencesTableProps {
   preferences: ModelPreferences | null;
@@ -15,36 +16,38 @@ interface ModelPreferencesTableProps {
   loading: boolean;
 }
 
-const TASK_ROWS: { task: TaskType; name: string; description: string; requiredProviders: ProviderId[] }[] = [
+const TASK_ROWS: { task: TaskType; name: string; description: string; requiredProviders: ProviderId[]; comingSoon?: boolean }[] = [
   {
     task: "chat",
     name: "General Chat",
     description: "Used for conversational queries and coding prompts.",
-    requiredProviders: ["claude", "openai", "gemini", "groq", "openrouter", "nvidia"],
+    requiredProviders: ["gemini", "openai", "groq", "nvidia"],
   },
   {
     task: "web_search",
     name: "Internet Grounding",
     description: "Powers real-time search queries and fact validation.",
-    requiredProviders: ["perplexity", "openai", "gemini"],
+    requiredProviders: ["gemini", "openai"],
   },
   {
     task: "file_analysis",
     name: "File Analysis",
     description: "Indexes documents and local code for grounding queries.",
-    requiredProviders: ["claude", "openai", "gemini"],
+    requiredProviders: ["gemini", "openai"],
   },
   {
     task: "image_generation",
     name: "Image Generation (v1.3)",
     description: "Generates visual assets inline in chat threads.",
     requiredProviders: ["openai"],
+    comingSoon: true,
   },
   {
     task: "video_generation",
     name: "Video Generation (v1.4)",
     description: "Powers async video clip generation pipeline.",
     requiredProviders: ["nvidia"],
+    comingSoon: true,
   },
 ];
 
@@ -86,16 +89,18 @@ export function ModelPreferencesTable({
       )}
 
       <div className="flex flex-col gap-4">
-        {TASK_ROWS.map(({ task, name, description, requiredProviders }) => {
+        {TASK_ROWS.map(({ task, name, description, requiredProviders, comingSoon }) => {
           const availableProviders = requiredProviders.filter((p) => activeKeys.includes(p));
-          const isEnabled = availableProviders.length > 0;
+          const isEnabled = availableProviders.length > 0 && !comingSoon;
           const currentPref = preferences[task];
 
           return (
             <div
               key={task}
               className={`p-4 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 ${
-                isEnabled
+                comingSoon
+                  ? "border-white/5 bg-white/[0.002] opacity-40 select-none cursor-not-allowed"
+                  : isEnabled
                   ? "border-white/5 bg-white/[0.01]"
                   : "border-white/5 bg-white/[0.002] opacity-40 select-none cursor-not-allowed"
               }`}
@@ -105,6 +110,11 @@ export function ModelPreferencesTable({
                 <h4 className="text-xs font-semibold text-sc-text flex items-center gap-1.5">
                   <Sliders className="h-3.5 w-3.5 text-sc-text-muted/50" />
                   {name}
+                  {comingSoon && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold uppercase tracking-wider">
+                      Coming Soon
+                    </span>
+                  )}
                 </h4>
                 <p className="text-[10px] text-sc-text-muted mt-1 leading-normal max-w-[340px]">
                   {description}
@@ -112,29 +122,29 @@ export function ModelPreferencesTable({
               </div>
 
               {/* Preferences Configuration Dropdowns */}
-              {isEnabled && currentPref ? (
+              {comingSoon ? (
+                <div className="text-[10px] text-amber-400/90 bg-amber-500/5 border border-amber-500/15 px-3 py-1.5 rounded shrink-0 w-full sm:w-auto text-center font-semibold uppercase tracking-wider font-mono">
+                  Coming Soon
+                </div>
+              ) : isEnabled && currentPref ? (
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center shrink-0 w-full sm:w-auto">
                   {/* Provider Selector */}
                   <div className="flex flex-col gap-1 w-full sm:w-[130px]">
                     <label className="text-[8px] text-sc-text-muted uppercase tracking-wider font-semibold">
                       Provider
                     </label>
-                    <select
+                    <Select
                       value={currentPref.provider}
-                      onChange={(e) => {
-                        const newProv = e.target.value as ProviderId;
-                        const models = getModelsFor(newProv);
+                      options={availableProviders.map((provId) => ({
+                        value: provId,
+                        label: getProviderName(provId),
+                      }))}
+                      onChange={(newProv) => {
+                        const models = getModelsFor(newProv as ProviderId);
                         const defaultModel = models[0]?.id || "";
-                        onPreferenceChange(task, newProv, defaultModel);
+                        onPreferenceChange(task, newProv as ProviderId, defaultModel);
                       }}
-                      className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-[11px] text-sc-text outline-none focus:border-sc-accent transition-colors"
-                    >
-                      {availableProviders.map((provId) => (
-                        <option key={provId} value={provId}>
-                          {getProviderName(provId)}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   {/* Model Selector */}

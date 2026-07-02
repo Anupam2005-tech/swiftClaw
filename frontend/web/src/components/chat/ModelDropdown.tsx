@@ -13,21 +13,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const PROVIDER_NAMES: Record<string, string> = {
   gemini: "Gemini",
-  claude: "Claude",
   openai: "OpenAI",
   groq: "Groq",
-  perplexity: "Perplexity",
-  openrouter: "OpenRouter",
   nvidia: "NVIDIA",
 };
 
 const PROVIDER_COLORS: Record<string, string> = {
   gemini: "text-blue-400/80",
-  claude: "text-orange-400/80",
   openai: "text-green-400/80",
   groq: "text-purple-400/80",
-  perplexity: "text-cyan-400/80",
-  openrouter: "text-yellow-400/80",
   nvidia: "text-emerald-400/80",
 };
 
@@ -278,30 +272,23 @@ export function ModelDropdown({ webSearchEnabled, onWebSearchChange }: ModelDrop
               )}
             </div>
 
-            {/* Web Search Toggle */}
-            <div className="border-t border-white/5 px-3 py-2">
-              <label className="flex items-center gap-2.5 cursor-pointer group">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onWebSearchChange?.(!webSearchEnabled);
+            {/* Web Search Checkbox */}
+            <div className="border-t border-white/5 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+              <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] text-sc-text-muted/60 hover:text-sc-text-muted/95 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={webSearchEnabled}
+                  onChange={(e) => {
+                    onWebSearchChange?.(e.target.checked);
                   }}
-                  className={cn(
-                    "relative h-4 w-7 rounded-full transition-colors shrink-0",
-                    webSearchEnabled ? "bg-sc-accent" : "bg-white/10"
-                  )}
-                >
-                  <span className={cn(
-                    "absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform",
-                    webSearchEnabled && "translate-x-3"
-                  )} />
-                </button>
+                  className="rounded border-white/10 bg-black text-sc-accent focus:ring-sc-accent focus:ring-offset-0 h-3.5 w-3.5 transition-colors cursor-pointer"
+                />
                 <Globe className={cn(
-                  "h-3 w-3 shrink-0 transition-colors",
+                  "h-3 w-3 shrink-0 transition-colors ml-0.5",
                   webSearchEnabled ? "text-sc-accent" : "text-sc-text-muted/40"
                 )} />
                 <span className={cn(
-                  "text-[10px] font-medium transition-colors",
+                  "font-medium transition-colors",
                   webSearchEnabled ? "text-sc-text" : "text-sc-text-muted/50"
                 )}>
                   Search the web

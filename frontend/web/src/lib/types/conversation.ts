@@ -4,8 +4,10 @@ export interface FileAttachment {
   name: string;
   size: number;
   type: string;
+  mime_type?: string;
   dataUrl?: string; // base64 or object URL for client preview
   contentUrl?: string; // final URL
+  content?: string; // persisted base64 (images) or text (documents) from Firestore
 }
 
 export interface Source {
@@ -32,8 +34,7 @@ export interface Message {
   model?: string;
   attachments?: FileAttachment[];
   sources?: Source[];
-  status?: "streaming" | "done" | "interrupted" | "error";
-  tokens_used?: number;
+  status?: "streaming" | "done" | "interrupted" | "error" | "queued";
   tool_calls?: ToolCall[];
   media_job_id?: string; // for v1.4 async video jobs
   image_url?: string; // for v1.3 image generation
@@ -45,4 +46,14 @@ export interface Conversation {
   last_message_preview: string;
   created_at: string;
   updated_at: string;
+  pinned?: boolean;
+}
+
+export interface LobbyImage {
+  id: string;
+  conversation_id: string;
+  conversation_title: string;
+  image_url: string;
+  created_at: string;
+  prompt: string;
 }

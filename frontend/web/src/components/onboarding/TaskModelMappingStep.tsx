@@ -9,37 +9,40 @@ import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { PROVIDERS } from "./ProviderSelectionStep";
 import { useAllProviderModels } from "@/lib/hooks/useProviderModels";
 import { ModelSelect } from "@/components/ui/model-select";
+import { Select } from "@/components/ui/select";
 
-const TASK_INFOS: { task: TaskType; name: string; description: string; requiredProviders: ProviderId[] }[] = [
+const TASK_INFOS: { task: TaskType; name: string; description: string; requiredProviders: ProviderId[]; comingSoon?: boolean }[] = [
   {
     task: "chat",
     name: "General Chat",
     description: "Used for conversational queries and coding prompts.",
-    requiredProviders: ["claude", "openai", "gemini", "groq", "openrouter", "nvidia"],
+    requiredProviders: ["gemini", "openai", "groq", "nvidia"],
   },
   {
     task: "web_search",
     name: "Internet Grounding",
     description: "Powers real-time search queries and fact validation.",
-    requiredProviders: ["perplexity", "openai", "gemini"],
+    requiredProviders: ["openai", "gemini"],
   },
   {
     task: "file_analysis",
     name: "File Analysis",
     description: "Indexes documents and local code for grounding queries.",
-    requiredProviders: ["claude", "openai", "gemini"],
+    requiredProviders: ["gemini", "openai"],
   },
   {
     task: "image_generation",
     name: "Image Generation (v1.3)",
     description: "Generates visual assets inline in chat threads.",
     requiredProviders: ["openai"],
+    comingSoon: true,
   },
   {
     task: "video_generation",
     name: "Video Generation (v1.4)",
     description: "Powers async video clip generation pipeline.",
     requiredProviders: ["nvidia"],
+    comingSoon: true,
   },
 ];
 
@@ -106,9 +109,9 @@ export function TaskModelMappingStep({
         variants={containerVariants}
         className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-none mb-6"
       >
-        {TASK_INFOS.map(({ task, name, description, requiredProviders }) => {
+        {TASK_INFOS.map(({ task, name, description, requiredProviders, comingSoon }) => {
           const availableProviders = requiredProviders.filter((p) => selectedProviders.includes(p));
-          const isEnabled = availableProviders.length > 0;
+          const isEnabled = availableProviders.length > 0 && !comingSoon;
           const currentPref = preferences[task];
 
           return (
@@ -118,7 +121,9 @@ export function TaskModelMappingStep({
               layout
               transition={{ type: "spring", stiffness: 200, damping: 20 }}
               className={`p-4 rounded-lg border transition-all ${
-                isEnabled
+                comingSoon
+                  ? "border-white/[0.03] bg-white/[0.005] opacity-50 select-none cursor-not-allowed"
+                  : isEnabled
                   ? "border-white/[0.04] bg-white/[0.01]"
                   : "border-white/[0.03] bg-white/[0.005] opacity-50"
               }`}
@@ -131,7 +136,14 @@ export function TaskModelMappingStep({
                     </div>
                   )}
                   <div>
-                    <h4 className="text-xs font-semibold text-sc-text">{name}</h4>
+                    <h4 className="text-xs font-semibold text-sc-text flex items-center gap-1.5 animate-in fade-in">
+                      {name}
+                      {comingSoon && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold uppercase tracking-wider">
+                          Soon
+                        </span>
+                      )}
+                    </h4>
                     <p className="text-[10px] text-sc-text-muted mt-0.5 max-w-[220px] leading-normal">
                       {description}
                     </p>
@@ -139,7 +151,7 @@ export function TaskModelMappingStep({
                 </div>
                 {!isEnabled && (
                   <span className="text-[9px] text-sc-text-muted/65 bg-white/5 px-2 py-0.5 rounded font-mono select-none">
-                    Disabled
+                    {comingSoon ? "Coming Soon" : "Disabled"}
                   </span>
                 )}
               </div>
@@ -150,22 +162,18 @@ export function TaskModelMappingStep({
                     <label className="text-[9px] text-sc-text-muted uppercase tracking-wider font-semibold">
                       Provider
                     </label>
-                    <select
+                    <Select
                       value={currentPref.provider}
-                      onChange={(e) => {
-                        const newProv = e.target.value as ProviderId;
-                        const models = getModelsFor(newProv);
+                      options={availableProviders.map((provId) => ({
+                        value: provId,
+                        label: getProviderName(provId),
+                      }))}
+                      onChange={(newProv) => {
+                        const models = getModelsFor(newProv as ProviderId);
                         const defaultModel = models[0]?.id || "";
-                        onPreferenceChange(task, newProv, defaultModel);
+                        onPreferenceChange(task, newProv as ProviderId, defaultModel);
                       }}
-                      className="bg-black/40 border border-white/10 rounded px-2.5 py-1.5 text-xs text-sc-text outline-none focus:border-sc-accent transition-colors appearance-none cursor-pointer"
-                    >
-                      {availableProviders.map((provId) => (
-                        <option key={provId} value={provId}>
-                          {getProviderName(provId)}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   <div className="flex flex-col gap-1">
@@ -183,7 +191,7 @@ export function TaskModelMappingStep({
                 </div>
               )}
 
-              {!isEnabled && (
+              {!isEnabled && !comingSoon && (
                 <p className="text-[10px] text-sc-text-muted/75 italic ml-8">
                   Requires one of: {requiredProviders.map((p) => getProviderName(p)).join(", ")} keys.
                 </p>

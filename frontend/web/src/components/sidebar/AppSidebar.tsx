@@ -22,6 +22,7 @@ import {
   MessageSquare,
   ChevronRight,
   Plus,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   Tooltip,
@@ -163,11 +164,18 @@ export function AppSidebar() {
       <Skeleton name="app-sidebar" loading={loading} animate="pulse" className="h-full shrink-0 flex flex-col">
         <motion.aside
         className={cn(
-          "h-full shrink-0 border-r border-white/[0.04] bg-gradient-to-b from-[#09090C] via-[#050508] to-[#020204] flex flex-col overflow-hidden select-none shadow-2xl relative transition-all",
+          "h-full shrink-0 border-r border-white/[0.04] bg-sidebar flex flex-col overflow-hidden select-none shadow-2xl relative transition-all app-sidebar",
           isMobile 
             ? "fixed inset-y-0 left-0 z-[100] w-[85vw] max-w-[320px]" 
             : "z-20"
         )}
+        style={{
+          backgroundColor: "#1F1F1F",
+          "--sidebar": "#1F1F1F",
+          "--sidebar-foreground": "#ffffff",
+          "--sc-text-muted": "#ffffff",
+          "--sc-text": "#ffffff",
+        } as React.CSSProperties}
         initial={isMobile ? (isMobileSidebarOpen ? "open" : "closed") : (collapsed ? "closed" : "open")}
         animate={isMobile ? (isMobileSidebarOpen ? "open" : "closed") : (collapsed ? "closed" : "open")}
         variants={sidebarVariants}
@@ -189,8 +197,8 @@ export function AppSidebar() {
           >
             <div className="flex items-center gap-2.5">
               <Terminal className="h-5 w-5 text-sc-text shrink-0" />
-              <span className="text-sm font-bold tracking-wider font-display">
-                swift<span className="font-serif italic font-normal text-sc-accent">Claw</span>
+              <span className="text-sm font-semibold font-display text-sc-text">
+                swiftClaw
               </span>
             </div>
           </motion.div>
@@ -226,8 +234,8 @@ export function AppSidebar() {
                     <Plus className="h-3.5 w-3.5 shrink-0" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl">
-                  New Chat
+                <TooltipContent side="right" sideOffset={12}>
+                  Compose
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -258,7 +266,7 @@ export function AppSidebar() {
                   <Search className="h-3.5 w-3.5 shrink-0" />
                   {!(isMobile ? false : collapsed) && (
                     <div className="flex flex-1 items-center justify-between ml-2.5 overflow-hidden">
-                      <span className="text-[11px] text-sc-text-muted/40 font-medium truncate">Search...</span>
+                      <span className="text-[11px] text-sc-text-muted/40 font-medium truncate">Find...</span>
                       {!isMobile && (
                         <span className="font-mono text-[8px] px-1.5 py-0.5 rounded border border-white/10 bg-black/40 text-sc-text-muted/40 tracking-wider font-bold">
                           ⌘K
@@ -268,22 +276,49 @@ export function AppSidebar() {
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl">
-                Search conversations (⌘K)
+              <TooltipContent side="right" sideOffset={12}>
+                Find conversations (⌘K)
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
 
+        {/* LOBBY */}
+        <div className={cn("shrink-0", (isMobile ? false : collapsed) ? "px-2 pb-2" : "px-3 pb-2")}>
+          <TooltipProvider>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    router.push("/lobby");
+                    if (isMobile) {
+                      closeMobileSidebar();
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center rounded-md text-sc-text-muted hover:text-sc-text transition-all cursor-pointer",
+                    (isMobile ? false : collapsed) ? "h-8 w-8 justify-center" : "h-8 w-full px-2.5",
+                    pathname === "/lobby" && "border border-sc-accent/20 bg-sc-accent/5 text-sc-text"
+                  )}
+                >
+                  <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                  {!(isMobile ? false : collapsed) && (
+                    <div className="flex flex-1 items-center justify-between ml-2.5 overflow-hidden">
+                      <span className="text-[11px] font-medium truncate">Lobby</span>
+                    </div>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                Media Lobby
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+
         {/* CONVERSATION LIST */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          {(isMobile ? false : collapsed) === false && (
-            <div className="px-4 mb-1 shrink-0">
-              <span className="text-[9px] uppercase tracking-[0.2em] font-semibold text-sc-text-muted/40 select-none">
-                History
-              </span>
-            </div>
-          )}
           {(isMobile ? false : collapsed) ? (
             <div className="flex flex-col items-center gap-2 px-2 pt-2">
               {conversations.slice(0, 8).map((conv) => (
@@ -300,7 +335,7 @@ export function AppSidebar() {
                         )}
                       />
                     </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl max-w-[200px]">
+                    <TooltipContent side="right" sideOffset={12} className="max-w-[200px]">
                       <p className="truncate">{conv.title}</p>
                     </TooltipContent>
                   </Tooltip>
@@ -349,7 +384,7 @@ export function AppSidebar() {
                   </button>
                 </TooltipTrigger>
                 {collapsed && (
-                  <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl">
+                  <TooltipContent side="right" sideOffset={12}>
                     Settings
                   </TooltipContent>
                 )}
@@ -399,7 +434,7 @@ export function AppSidebar() {
                   </button>
                 </TooltipTrigger>
                 {(isMobile ? false : collapsed) && (
-                  <TooltipContent side="right" sideOffset={12} className="rounded-xl border border-white/10 bg-[#07070C] px-4 py-2 text-sm text-white/60 shadow-2xl backdrop-blur-xl">
+                  <TooltipContent side="right" sideOffset={12}>
                     Sign out
                   </TooltipContent>
                 )}

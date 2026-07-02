@@ -15,7 +15,6 @@ class StreamChunk(TypedDict):
     to_provider: Optional[str]
     reason: Optional[str]
     message_id: Optional[str]
-    tokens_used: Optional[int]
 
 class ProviderCapabilities(BaseModel):
     supports_tools: bool = False
@@ -24,6 +23,8 @@ class ProviderCapabilities(BaseModel):
     max_context_tokens: int = 8192
     supports_image_gen: bool = False
     supports_video_gen: bool = False
+    input_cost_per_1k: float = 0.0
+    output_cost_per_1k: float = 0.0
 
 class ProviderErrorCode(str):
     rate_limited = "rate_limited"
@@ -41,9 +42,10 @@ class ProviderError(Exception):
         super().__init__(f"ProviderError({code}): {message}")
 
 class ModelAdapter(ABC):
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, discovered_metadata: dict = None):
         self.api_key = api_key
         self.model_name = model
+        self.discovered_metadata = discovered_metadata or {}
         
     @property
     @abstractmethod

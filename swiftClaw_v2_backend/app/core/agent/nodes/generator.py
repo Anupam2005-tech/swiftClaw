@@ -1,6 +1,8 @@
 from app.core.agent.state import AgentState
-from app.core.providers.factory import get_adapter, validate_model_for_provider, get_fallback_provider, get_default_model
+from app.core.providers.factory import get_adapter, validate_model_for_provider_for_user, get_default_model_for_user
 from app.core.vault.vault import get_api_key, mark_key_used
+from app.core.providers.model_discovery import get_cached_models
+from app.core.providers.base import ProviderError
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 import structlog
@@ -8,29 +10,41 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
+def _clean_error_message(e: Exception) -> tuple[str, str]:
+    """Return (code, human_readable_message) from an exception."""
+    if isinstance(e, ProviderError):
+        code = e.code or "generation_error"
+        if code == "invalid_key":
+            return code, "Invalid or expired API key. Please update it in Settings."
+        if code == "rate_limited":
+            return code, "Rate limit reached. Please wait a moment and try again."
+        return code, e.message or "Something went wrong. Please try again."
+    return "generation_error", "Something went wrong. Please try again."
+
+
 async def generator_node(state: AgentState, config: RunnableConfig = None) -> dict:
     """
     Generator node. Calls the selected generator provider adapter and produces
     the output. If a critique exists from a failed evaluation, appends the critique
     and prompts the model for revision.
-    Supports auto-fallback on rate limits with toast notification.
     """
     user_id = state.get("user_id")
     provider = state.get("provider_generator")
-    model = state.get("model_generator")  # Use model directly from router
+    model = state.get("model_generator")
     messages = state.get("messages", [])
     retries = state.get("retries", 0)
     evaluation = state.get("evaluation") or {}
     available_providers = state.get("available_providers", [])
     
-    # Validate model for provider, fallback to default if invalid
+    # Validate model for provider, fallback to user's default if invalid
     if model:
-        is_valid, validated_model = validate_model_for_provider(provider, model)
+        is_valid = validate_model_for_provider_for_user(user_id, provider, model)
         if not is_valid:
-            model = validated_model
-            logger.warning("model_fallback_in_generator", provider=provider, fallback_model=model)
+            fallback = get_default_model_for_user(user_id, provider)
+            model = fallback
+            logger.warning("model_fallback_in_generator", provider=provider, original_model=model, fallback_model=fallback)
     else:
-        model = get_default_model(provider)
+        model = get_default_model_for_user(user_id, provider)
     
     gen_key = get_api_key(user_id, provider)
     if not gen_key:
@@ -39,8 +53,8 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
         if config and "configurable" in config:
             stream_callback = config["configurable"].get("stream_callback")
         if stream_callback:
-            await stream_callback({"type": "text", "content": "Error: Generator API key missing."})
-        return {"output": "Error: Generator API key missing."}
+            await stream_callback({"type": "error", "code": "invalid_key", "message": "API key missing for this provider. Please add it in Settings."})
+        return {"output": ""}
     
     stream_callback = None
     if config and "configurable" in config:
@@ -48,7 +62,15 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
     
     async def try_generate(prov: str, mdl: str, key: str) -> str:
         """Try to generate with given provider/model/key. Returns output or raises."""
-        adapter = get_adapter(prov, key, mdl)
+        # Look up discovered capabilities for adapter
+        cached = get_cached_models(user_id, prov) or []
+        capabilities = None
+        for m in cached:
+            if m.get("id") == mdl:
+                capabilities = m
+                break
+        
+        adapter = get_adapter(prov, key, mdl, capabilities)
         
         formatted_messages = []
         for msg in messages:
@@ -68,6 +90,7 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
             formatted_messages.append({"role": "user", "content": retry_prompt})
         
         full_output = ""
+        
         async for chunk in adapter.stream(formatted_messages):
             if chunk["type"] == "text" and chunk["content"]:
                 full_output += chunk["content"]
@@ -75,6 +98,13 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
                     await stream_callback(chunk)
             elif chunk["type"] == "tool_call" and stream_callback:
                 await stream_callback(chunk)
+            elif chunk["type"] == "error" and chunk.get("code") == "unsupported_capability":
+                if stream_callback:
+                    await stream_callback({
+                        "type": "text",
+                        "content": f"The selected model ({mdl}) doesn't support this feature ({chunk.get('message', '')}). Please choose a different model."
+                    })
+                return f"Error: The selected model ({mdl}) doesn't support this feature."
         
         mark_key_used(user_id, prov)
         logger.info("generation_complete", provider=prov, model=mdl, output_length=len(full_output))
@@ -89,34 +119,35 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
         error_str = str(e).lower()
         logger.error("generation_failed", error=str(e), provider=provider, model=model)
         
-        # Check for rate limit / quota exceeded
         is_rate_limited = "rate" in error_str or "429" in error_str or "quota" in error_str
         
         if is_rate_limited and available_providers:
-            # Try fallback provider
-            fallback = get_fallback_provider(available_providers, provider)
-            if fallback:
-                fallback_key = get_api_key(user_id, fallback)
+            fallback_provider = None
+            for p in available_providers:
+                if p != provider:
+                    fallback_provider = p
+                    break
+            
+            if fallback_provider:
+                fallback_key = get_api_key(user_id, fallback_provider)
                 if fallback_key:
-                    fallback_model = get_default_model(fallback)
+                    fallback_model = get_default_model_for_user(user_id, fallback_provider)
                     
-                    # Send toast notification about fallback
                     if stream_callback:
                         await stream_callback({
                             "type": "text",
-                            "content": f"\n\n⚠️ **Provider Fallback**: {provider} rate limited. Switching to {fallback} ({fallback_model})...\n\n"
+                            "content": f"\n\n⚠️ **Provider Fallback**: {provider} rate limited. Switching to {fallback_provider} ({fallback_model})...\n\n"
                         })
                     
-                    logger.info("provider_fallback", from_provider=provider, to_provider=fallback, model=fallback_model)
+                    logger.info("provider_fallback", from_provider=provider, to_provider=fallback_provider, model=fallback_model)
                     
                     try:
-                        output = await try_generate(fallback, fallback_model, fallback_key)
-                        return {"output": output, "retries": retries + 1, "provider_fallback": fallback}
+                        output = await try_generate(fallback_provider, fallback_model, fallback_key)
+                        return {"output": output, "retries": retries + 1, "provider_fallback": fallback_provider}
                     except Exception as fallback_error:
-                        logger.error("fallback_generation_failed", error=str(fallback_error), fallback=fallback)
+                        logger.error("fallback_generation_failed", error=str(fallback_error), fallback=fallback_provider)
         
-        # If we get here, either not rate limited or fallback failed
-        error_msg = f"Error: Generation failed: {str(e)}"
+        err_code, err_msg = _clean_error_message(e)
         if stream_callback:
-            await stream_callback({"type": "text", "content": error_msg})
-        return {"output": error_msg}
+            await stream_callback({"type": "error", "code": err_code, "message": err_msg})
+        return {"output": ""}

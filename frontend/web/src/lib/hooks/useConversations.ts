@@ -83,7 +83,9 @@ export const useConversations = (activeId?: string) => {
 
   const batchDeleteConversations = async (ids: string[]) => {
     try {
-      await api.batchDeleteConversations(ids);
+      if (ids.length > 0) {
+        await api.batchDeleteConversations(ids);
+      }
       await fetchConversations(false);
       window.dispatchEvent(new CustomEvent("conversations-updated"));
       if (activeId && ids.includes(activeId)) {
@@ -91,6 +93,16 @@ export const useConversations = (activeId?: string) => {
       }
     } catch (err) {
       console.error(`Failed to batch delete conversations:`, err);
+    }
+  };
+
+  const pinConversation = async (id: string, pinned: boolean) => {
+    try {
+      await api.pinConversation(id, pinned);
+      await fetchConversations(false);
+      window.dispatchEvent(new CustomEvent("conversations-updated"));
+    } catch (err) {
+      console.error(`Failed to pin conversation ${id}:`, err);
     }
   };
 
@@ -102,8 +114,9 @@ export const useConversations = (activeId?: string) => {
     createConversation,
     deleteConversation,
     batchDeleteConversations,
+    pinConversation,
     refreshConversations: () => fetchConversations(false),
-    refreshMessages: () => activeId && fetchMessages(activeId, false),
+    refreshMessages: useCallback(() => activeId && fetchMessages(activeId, false), [activeId, fetchMessages]),
     setMessages,
   };
 };
