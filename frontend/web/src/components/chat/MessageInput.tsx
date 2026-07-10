@@ -5,7 +5,7 @@ import { ChatInputMode, InputModeToggle } from "./InputModeToggle";
 import { FileAttachmentPreview } from "./FileAttachmentPreview";
 import { FileAttachment } from "../../lib/types/conversation";
 import { StopGenerationButton } from "./StopGenerationButton";
-import { Paperclip, ArrowUp, Zap, HelpCircle } from "lucide-react";
+import { Paperclip, ArrowUp, Zap, HelpCircle, Image } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ export function MessageInput({
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea heights
   useEffect(() => {
@@ -123,7 +124,7 @@ export function MessageInput({
         )}
       >
         <div className="flex gap-2 items-end">
-          {/* Paperclip attach button */}
+          {/* File attach inputs */}
           <input
             type="file"
             multiple
@@ -132,15 +133,36 @@ export function MessageInput({
             className="hidden"
             id="file-upload-input"
           />
-          <button
-            type="button"
-            onClick={triggerFileSelect}
-            disabled={streaming}
-            className="h-10 w-10 flex items-center justify-center rounded-lg text-sc-text-muted hover:text-sc-text hover:bg-white/5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-            title="Attach Files"
-          >
-            <Paperclip className="h-4.5 w-4.5" />
-          </button>
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            ref={imageInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            id="image-upload-input"
+          />
+          
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={triggerFileSelect}
+              disabled={streaming}
+              className="h-10 w-9 flex items-center justify-center rounded-lg text-sc-text-muted hover:text-sc-text hover:bg-white/5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              title="Attach File"
+            >
+              <Paperclip className="h-4.5 w-4.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={streaming}
+              className="h-10 w-9 flex items-center justify-center rounded-lg text-sc-text-muted hover:text-sc-text hover:bg-white/5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              title="Attach Image"
+            >
+              <Image className="h-4.5 w-4.5" />
+            </button>
+          </div>
 
           {/* Core Text Input */}
           <textarea

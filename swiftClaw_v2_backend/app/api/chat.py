@@ -140,6 +140,7 @@ async def stream_chat(
     web_search: bool = Form(False),
     user_message_id: Optional[str] = Form(None),
     assistant_message_id: Optional[str] = Form(None),
+    attachments_metadata: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -164,10 +165,10 @@ async def stream_chat(
     available_providers = user_context["available_providers"]
     model_preferences = user_context["model_preferences"]
     
-    if not available_providers or not model_preferences:
+    if not available_providers:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "onboarding_incomplete", "message": "You must complete onboarding (keys and preferences) first."}
+            detail={"code": "onboarding_incomplete", "message": "No valid API keys found. Please add at least one API key in Settings."}
         )
         
     # 3. Handle history assembly and context budget
@@ -203,18 +204,57 @@ async def stream_chat(
         role = msg.get("role")
         content = msg.get("content", "")
         attachments = msg.get("attachments")
-        if role == "user":
+        if role in ("user", "u"):
             if attachments:
                 parts = [{"type": "text", "text": content}]
                 for att in attachments:
                     att_type = att.get("type", "")
                     att_content = att.get("content")
-                    if att_type.startswith("image/") and att_content:
-                        mime = att.get("mime_type") or att_type
-                        parts.append({
-                            "type": "image_url",
-                            "image_url": {"url": f"data:{mime};base64,{att_content}"}
-                        })
+                    if att_type.startswith("image/"):
+                        if att_content:
+                            # Legacy: image content was stored in Firestore
+                            mime = att.get("mime_type") or att_type
+                            parts.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mime};base64,{att_content}"}
+                            })
+                        elif att.get("storageUrl"):
+                            try:
+                                url_str = att["storageUrl"]
+                                marker = "/api/upload/file/"
+                                if marker in url_str:
+                                    object_key = url_str.split(marker, 1)[1]
+                                    from app.api.upload import get_s3_client
+                                    from app.config import settings
+                                    import base64
+                                    
+                                    s3 = get_s3_client()
+                                    response = s3.get_object(Bucket=settings.r2_bucket_name, Key=object_key)
+                                    image_data = response['Body'].read()
+                                    b64_data = base64.b64encode(image_data).decode("utf-8")
+                                    mime = att.get("mime_type") or att_type
+                                    parts.append({
+                                        "type": "image_url",
+                                        "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                                    })
+                                else:
+                                    # Fallback if storageUrl is external/direct
+                                    parts.append({
+                                        "type": "image_url",
+                                        "image_url": {"url": url_str}
+                                    })
+                            except Exception as r2_err:
+                                logger.error("failed_to_load_historical_image_from_r2", error=str(r2_err), url=att.get("storageUrl"))
+                                parts.append({
+                                    "type": "text",
+                                    "text": f"[Image '{att.get('name', 'image')}' was attached in this turn]"
+                                })
+                        else:
+                            # Current: only metadata stored, image was processed in-memory
+                            parts.append({
+                                "type": "text",
+                                "text": f"[Image '{att.get('name', 'image')}' was attached in this turn]"
+                            })
                     elif att_content:
                         parts.append({
                             "type": "text",
@@ -223,7 +263,7 @@ async def stream_chat(
                 lc_history.append(HumanMessage(content=parts))
             else:
                 lc_history.append(HumanMessage(content=content))
-        elif role == "assistant":
+        elif role in ("assistant", "a"):
             lc_history.append(AIMessage(content=content))
             
     # Incorporate files into user message content
@@ -232,15 +272,17 @@ async def stream_chat(
     
     # Check if the current model supports vision
     supports_vision = True
-    pref_model = model_preferences.get(task_category)
+    pref_model = model_preferences.get(task_category) or model_preferences.get("chat")
     if pref_model and ":" in pref_model:
         prov, mod = pref_model.split(":", 1)
-        cached = get_cached_models(uid, prov)
+        cached = await asyncio.to_thread(get_cached_models, uid, prov)
         if cached:
             for m in cached:
                 if m.get("id") == mod:
                     supports_vision = m.get("supports_vision", True)
                     break
+    
+    logger.debug("vision_support_check", model=pref_model, supports_vision=supports_vision, task_category=task_category, num_images=sum(1 for pf in processed_files if pf["type"] == "image"))
     
     for pf in processed_files:
         if pf["type"] == "text":
@@ -252,7 +294,8 @@ async def stream_chat(
                     "image_url": {"url": f"data:{pf['mime_type']};base64,{pf['content']}"}
                 })
             else:
-                message_content.append(f"[An image '{pf['filename']}' was attached but the current model does not support vision.]")
+                logger.warning("image_skipped_no_vision", filename=pf["filename"], model=pref_model)
+                message_content.append(f"[An image '{pf['filename']}' was attached. The selected model does not support image input — please switch to a vision-capable model to analyze images.]")
             
     # Add user message
     message_content.append(message)
@@ -273,11 +316,11 @@ async def stream_chat(
         "nvidia": 128000,
     }
     max_context_tokens = 32768  # universal safe default
-    pref_model = model_preferences.get(task_category)
+    pref_model = model_preferences.get(task_category) or model_preferences.get("chat")
     if pref_model and ":" in pref_model:
         prov, mod = pref_model.split(":", 1)
         max_context_tokens = SAFE_CONTEXT_FALLBACKS.get(prov, 32768)
-        cached = get_cached_models(uid, prov)
+        cached = await asyncio.to_thread(get_cached_models, uid, prov)
         if cached:
             for m in cached:
                 if m.get("id") == mod:
@@ -291,7 +334,8 @@ async def stream_chat(
         rolling_summary=rolling_summary,
         history=lc_history,
         current_message=current_message,
-        max_tokens=max_context_tokens
+        max_tokens=max_context_tokens,
+        model=pref_model or "openai:gpt-4o"
     )
     
     # Inject web search results if enabled
@@ -314,28 +358,48 @@ async def stream_chat(
             logger.warning("web_search_injection_failed", error=str(e))
     
     # Save user message to DB with file attachments (if not updating an existing message)
+    # NOTE: Image base64 content is NOT persisted — it exceeds Firestore's 1MB doc limit.
+    # Only metadata is stored for images. Text file content is small enough to keep.
     user_attachments = None
     if processed_files:
-        user_attachments = [
-            {
+        user_attachments = []
+        
+        # Parse metadata from frontend to get storageUrl if available
+        parsed_metadata = {}
+        if attachments_metadata:
+            try:
+                meta_list = json.loads(attachments_metadata)
+                for item in meta_list:
+                    if "name" in item:
+                        parsed_metadata[item["name"]] = item
+            except Exception as e:
+                logger.error("failed_to_parse_attachments_metadata", error=str(e))
+                
+        for pf in processed_files:
+            att = {
                 "name": pf["filename"],
                 "type": pf["mime_type"] if pf["type"] == "image" else "text/plain",
                 "mime_type": pf["mime_type"],
                 "size": pf.get("size", 0),
-                "content": pf["content"]
             }
-            for pf in processed_files
-        ]
+            if pf["type"] == "text":
+                att["content"] = pf["content"]
+                
+            # Add storageUrl if frontend uploaded to Firebase Storage
+            client_meta = parsed_metadata.get(pf["filename"])
+            if client_meta and client_meta.get("storageUrl"):
+                att["storageUrl"] = client_meta["storageUrl"]
+                
+            # Images: no "content" key — base64 is used in-memory only for the current LLM call
+            user_attachments.append(att)
         
     if user_message_id and user_idx != -1:
         # Preserve or update attachments if necessary
         if processed_files:
             update_message_doc(uid, conversation_id, user_message_id, message, attachments=user_attachments)
     else:
-        add_message_doc(uid, conversation_id, "user", message, attachments=user_attachments, message_id=user_message_id)
-        if assistant_message_id:
-            add_message_doc(uid, conversation_id, "assistant", "", status="streaming", message_id=assistant_message_id)
-    
+        # Save user message to Firestore
+        user_message_id = add_message_doc(uid, conversation_id, "u", message, attachments=user_attachments, message_id=user_message_id)
     # Prepare active stream flag
     cancel_flag = asyncio.Event()
     active_streams[f"{uid}:{conversation_id}"] = cancel_flag
@@ -354,7 +418,9 @@ async def stream_chat(
                 "max_retries": 3,
                 "critique": "",
                 "provider_generator": "",
+                "model_generator": "",
                 "provider_evaluator": "",
+                "model_evaluator": "",
                 "session_id": session_id,
                 "user_id": uid,
                 "complexity": "medium",
@@ -410,24 +476,25 @@ async def stream_chat(
                 elif chunk["type"] == "text":
                     assistant_output += chunk["content"]
                     yield f"data: {json.dumps({'type': 'text_delta', 'content': chunk['content']})}\n\n"
+                elif chunk["type"] == "thinking":
+                    # Stream LLM thinking/reasoning tokens to the frontend
+                    yield f"data: {json.dumps({'type': 'thinking_delta', 'content': chunk['content']})}\n\n"
                 elif chunk["type"] == "tool_call":
                     yield f"data: {json.dumps({'type': 'tool_call', 'tool': chunk['tool'], 'args': chunk['args']})}\n\n"
                     
             # 4. Save response to history and update rolling summary if needed
             if error_occurred:
-                msg_status = "error"
-                assistant_output = error_message
+                # Do NOT write assistant message
+                # Instead, mark the user message as failed
+                update_message_doc(uid, conversation_id, user_message_id, content=full_user_message_str, status="failed", error_code="provider_error")
             else:
-                msg_status = "interrupted" if cancel_flag.is_set() else "completed"
-
-            if assistant_message_id:
-                update_message_doc(uid, conversation_id, assistant_message_id, assistant_output, status=msg_status)
-            else:
-                add_message_doc(uid, conversation_id, "assistant", assistant_output, status=msg_status)
+                msg_status = "interrupted" if cancel_flag.is_set() else "ok"
+                add_message_doc(uid, conversation_id, "a", assistant_output, status=msg_status, message_id=assistant_message_id)
             
             # Check history size for summary trigger (every 20 messages)
             updated_history = get_conversation_history(uid, conversation_id)
-            if len(updated_history) % 20 == 0:
+            from app.config import settings
+            if len(updated_history) % settings.summary_every_n_messages == 0:
                 asyncio.create_task(generate_rolling_summary(uid, conversation_id, updated_history))
                 
         except Exception as e:
@@ -470,4 +537,3 @@ async def pin_conversation(conversation_id: str, req: PinRequest, current_user: 
     uid = current_user["uid"]
     pin_conversation_doc(uid, conversation_id, req.pinned)
     return {"status": "success", "pinned": req.pinned}
-

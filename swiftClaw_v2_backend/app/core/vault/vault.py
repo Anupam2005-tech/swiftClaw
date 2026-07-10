@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
+from cryptography.exceptions import InvalidTag
 from app.db.firestore import db
 from app.core.vault.encryption import encrypt_key, decrypt_key
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 def store_api_key(uid: str, provider: str, raw_key: str, validated: bool = True) -> None:
     ciphertext_b64, nonce_b64 = encrypt_key(raw_key)
@@ -30,8 +34,17 @@ def get_api_key(uid: str, provider: str) -> str | None:
     
     if not ciphertext_b64 or not nonce_b64:
         return None
-        
-    return decrypt_key(ciphertext_b64, nonce_b64)
+
+    try:
+        return decrypt_key(ciphertext_b64, nonce_b64)
+    except InvalidTag:
+        logger.warning(
+            "decrypt_failed_invalid_tag",
+            uid=uid,
+            provider=provider,
+            hint="Master key may have changed since this key was stored. Re-add the API key.",
+        )
+        return None
 
 def list_api_keys(uid: str) -> list[dict]:
     """

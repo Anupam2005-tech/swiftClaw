@@ -229,8 +229,8 @@ export function ModelDropdown({ webSearchEnabled, onWebSearchChange }: ModelDrop
                   const name = PROVIDER_NAMES[pid] || pid;
                   const models = modelMap[pid] || [];
                   const providerError = errorMap[pid];
-                  const displayModel = models[0]?.name || currentModel?.model || "";
                   const isActive = currentModel?.provider === pid;
+                  const displayModel = isActive ? (currentModel?.model || models[0]?.name || "") : (models[0]?.name || "");
 
                   const errorLabel = providerError
                     ? providerError.code === "rate_limited"

@@ -512,24 +512,19 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
             {/* Hidden Inputs */}
             <input
-              ref={imageInputRef}
-              type="file"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.[0]) handleAddImage(e.target.files[0]);
-                if (e.target) e.target.value = "";
-              }}
-              accept="image/*"
-            />
-            <input
               ref={fileInputRef}
               type="file"
+              multiple
               className="hidden"
               onChange={(e) => {
-                if (e.target.files?.[0]) handleAddFile(e.target.files[0]);
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  Array.from(files).forEach(file => processFile(file));
+                }
                 if (e.target) e.target.value = "";
               }}
-              accept=".pdf,.doc,.docx,.txt,.csv,.json,.md"
+              // accept both images and standard files
+              accept="image/*,.pdf,.doc,.docx,.txt,.csv,.json,.md"
             />
 
             <AnimatePresence>
@@ -544,23 +539,12 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                   <button
                     onClick={() => {
                       setDropdownOpen(false);
-                      imageInputRef.current?.click();
-                    }}
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-sc-text-muted hover:text-sc-text hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
-                  >
-                    <Image className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                    <span className="flex-1">Upload Image</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setDropdownOpen(false);
                       fileInputRef.current?.click();
                     }}
                     className="flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-sc-text-muted hover:text-sc-text hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
                   >
-                    <FileText className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <span className="flex-1">Upload File</span>
+                    <Plus className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span className="flex-1">Upload File or Image</span>
                   </button>
 
                   <div className="h-px bg-white/[0.04] my-1" />

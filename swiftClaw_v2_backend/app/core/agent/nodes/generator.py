@@ -1,3 +1,4 @@
+import asyncio
 from app.core.agent.state import AgentState
 from app.core.providers.factory import get_adapter, validate_model_for_provider_for_user, get_default_model_for_user
 from app.core.vault.vault import get_api_key, mark_key_used
@@ -38,13 +39,13 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
     
     # Validate model for provider, fallback to user's default if invalid
     if model:
-        is_valid = validate_model_for_provider_for_user(user_id, provider, model)
+        is_valid = await asyncio.to_thread(validate_model_for_provider_for_user, user_id, provider, model)
         if not is_valid:
-            fallback = get_default_model_for_user(user_id, provider)
+            fallback = await asyncio.to_thread(get_default_model_for_user, user_id, provider)
             model = fallback
             logger.warning("model_fallback_in_generator", provider=provider, original_model=model, fallback_model=fallback)
     else:
-        model = get_default_model_for_user(user_id, provider)
+        model = await asyncio.to_thread(get_default_model_for_user, user_id, provider)
     
     gen_key = get_api_key(user_id, provider)
     if not gen_key:
@@ -63,7 +64,7 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
     async def try_generate(prov: str, mdl: str, key: str) -> str:
         """Try to generate with given provider/model/key. Returns output or raises."""
         # Look up discovered capabilities for adapter
-        cached = get_cached_models(user_id, prov) or []
+        cached = await asyncio.to_thread(get_cached_models, user_id, prov) or []
         capabilities = None
         for m in cached:
             if m.get("id") == mdl:
@@ -88,12 +89,36 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
                 f"Please revise your answer and fix the issues noted."
             )
             formatted_messages.append({"role": "user", "content": retry_prompt})
+            
+        # If the model does not support vision, strip out the image blocks
+        if not adapter.capabilities.supports_vision:
+            cleaned_messages = []
+            for msg in formatted_messages:
+                content = msg.get("content")
+                if isinstance(content, list):
+                    text_parts = []
+                    for part in content:
+                        if isinstance(part, dict):
+                            if part.get("type") == "text":
+                                text_parts.append(part.get("text", ""))
+                            elif part.get("type") == "image_url":
+                                text_parts.append(f"[Image Attached]")
+                        else:
+                            text_parts.append(str(part))
+                    cleaned_messages.append({**msg, "content": "\n".join(text_parts)})
+                else:
+                    cleaned_messages.append(msg)
+            formatted_messages = cleaned_messages
         
         full_output = ""
         
         async for chunk in adapter.stream(formatted_messages):
             if chunk["type"] == "text" and chunk["content"]:
                 full_output += chunk["content"]
+                if stream_callback:
+                    await stream_callback(chunk)
+            elif chunk["type"] == "thinking" and chunk["content"]:
+                # Forward LLM thinking/reasoning tokens to the frontend
                 if stream_callback:
                     await stream_callback(chunk)
             elif chunk["type"] == "tool_call" and stream_callback:
@@ -131,12 +156,30 @@ async def generator_node(state: AgentState, config: RunnableConfig = None) -> di
             if fallback_provider:
                 fallback_key = get_api_key(user_id, fallback_provider)
                 if fallback_key:
-                    fallback_model = get_default_model_for_user(user_id, fallback_provider)
+                    # Determine if we need vision support
+                    needs_vision = False
+                    for msg in messages:
+                        if isinstance(msg, HumanMessage) and isinstance(msg.content, list):
+                            if any(isinstance(part, dict) and part.get("type") == "image_url" for part in msg.content):
+                                needs_vision = True
+                                break
+                    
+                    fallback_model = None
+                    if needs_vision:
+                        # Find a model from fallback provider cache that supports vision
+                        cached = await asyncio.to_thread(get_cached_models, user_id, fallback_provider) or []
+                        for m in cached:
+                            if m.get("supports_vision"):
+                                fallback_model = m.get("id")
+                                break
+                    
+                    if not fallback_model:
+                        fallback_model = await asyncio.to_thread(get_default_model_for_user, user_id, fallback_provider)
                     
                     if stream_callback:
                         await stream_callback({
                             "type": "text",
-                            "content": f"\n\n⚠️ **Provider Fallback**: {provider} rate limited. Switching to {fallback_provider} ({fallback_model})...\n\n"
+                            "content": f"\n\n **Provider Fallback**: {provider} rate limited. Switching to {fallback_provider} ({fallback_model})...\n\n"
                         })
                     
                     logger.info("provider_fallback", from_provider=provider, to_provider=fallback_provider, model=fallback_model)

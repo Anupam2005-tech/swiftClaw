@@ -5,13 +5,6 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-from app.core.providers.factory import get_adapter
-from app.core.vault.vault import get_api_key
-from app.db.firestore import db
-import structlog
-
-logger = structlog.get_logger(__name__)
-
 CHEAP_MODELS = {
     "groq": "llama-3.1-8b-instant",
     "openai": "gpt-4o-mini",
@@ -65,7 +58,7 @@ async def generate_rolling_summary(uid: str, conversation_id: str, history: list
                 continue
 
             # Save summary to Firestore
-            db.collection("users").document(uid).collection("conversations").document(conversation_id).update({
+            db.collection("conversations").document(conversation_id).update({
                 "summary": summary
             })
             

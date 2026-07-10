@@ -1,3 +1,4 @@
+import asyncio
 from app.core.agent.state import AgentState
 from app.core.providers.factory import get_default_model_for_user
 import structlog
@@ -52,7 +53,7 @@ async def router_node(state: AgentState) -> dict:
         provider_gen = available[0]
     
     # Get model for generator provider
-    model_gen = get_model_for_provider(uid, provider_gen, prefs, category)
+    model_gen = await asyncio.to_thread(get_model_for_provider, uid, provider_gen, prefs, category)
     
     # 2. Select the evaluator provider
     if len(available) == 1:
@@ -63,7 +64,7 @@ async def router_node(state: AgentState) -> dict:
         other_providers = [p for p in available if p != provider_gen]
         if other_providers:
             provider_eval = other_providers[0]
-            model_eval = get_model_for_provider(uid, provider_eval, prefs, category)
+            model_eval = await asyncio.to_thread(get_model_for_provider, uid, provider_eval, prefs, category)
         else:
             provider_eval = provider_gen
             model_eval = model_gen

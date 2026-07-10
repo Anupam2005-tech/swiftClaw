@@ -1,6 +1,7 @@
+import asyncio
 import json
 from app.core.agent.state import AgentState
-from app.core.providers.factory import get_adapter
+from app.core.providers.factory import get_adapter, get_default_model_for_user
 from app.core.vault.vault import get_api_key
 import structlog
 
@@ -8,20 +9,59 @@ logger = structlog.get_logger(__name__)
 
 async def complexity_scorer_node(state: AgentState) -> dict:
     """
-    Classifies the user's task complexity using Groq (llama-3.1-8b-instant).
-    Falls back to 'medium' on failure or if Groq is not available.
+    Classifies the user's task complexity using the preferred LLM model provided by the user.
     """
     user_id = state.get("user_id")
     task = state.get("task", "")
+    category = state.get("task_category", "chat")
+    prefs = state.get("model_preferences", {})
+    available = state.get("available_providers", [])
     
-    # Attempt to get Groq API key from vault
-    groq_key = get_api_key(user_id, "groq")
-    if not groq_key:
-        logger.warn("groq_key_missing_complexity_fallback", uid=user_id)
+    provider = None
+    model = None
+    
+    # 1. Determine preferred provider & model
+    pref_model = prefs.get(category) or prefs.get("chat")
+    if pref_model:
+        if ":" in pref_model:
+            provider, model = pref_model.split(":", 1)
+        else:
+            provider = pref_model
+            model = await asyncio.to_thread(get_default_model_for_user, user_id, provider)
+            
+    # Fallback to first available provider if preferred is not in available
+    if not provider or provider not in available:
+        if available:
+            provider = available[0]
+            model = await asyncio.to_thread(get_default_model_for_user, user_id, provider)
+            
+    if not provider:
+        logger.warn("no_provider_available_for_complexity_scoring", uid=user_id)
         return {"complexity": "medium"}
         
+    # 2. Get API key with dynamic fallback
+    api_key = get_api_key(user_id, provider)
+    if not api_key:
+        found_alternative = False
+        for alt_provider in available:
+            alt_key = get_api_key(user_id, alt_provider)
+            if alt_key:
+                provider = alt_provider
+                model = await asyncio.to_thread(get_default_model_for_user, user_id, provider)
+                api_key = alt_key
+                found_alternative = True
+                break
+        if not found_alternative:
+            logger.warn("all_provider_keys_missing_complexity_fallback", uid=user_id)
+            return {"complexity": "medium"}
+            
+    if not model:
+        model = await asyncio.to_thread(get_default_model_for_user, user_id, provider)
+        
+    logger.info("complexity_scoring_started", provider=provider, model=model)
+        
     try:
-        adapter = get_adapter("groq", groq_key, "llama-3.1-8b-instant")
+        adapter = get_adapter(provider, api_key, model)
         
         system_prompt = (
             "You are a fast complexity scorer. Classify the user task as either 'simple', 'medium', or 'complex'.\n"

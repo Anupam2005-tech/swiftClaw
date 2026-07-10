@@ -315,9 +315,12 @@ export const api = {
           type: att.type || att.mime_type,
           mime_type: att.mime_type,
           content: att.content,
-          dataUrl: att.type?.startsWith("image/")
+          dataUrl: att.storageUrl
+            ? att.storageUrl
+            : att.content && att.type?.startsWith("image/")
             ? `data:${att.mime_type || att.type};base64,${att.content}`
             : undefined,
+          storageUrl: att.storageUrl,
         })),
       };
       return msg;
@@ -357,10 +360,21 @@ export const api = {
     };
   },
 
+  async uploadFile(file: File, conversationId: string): Promise<{ url: string; object_key: string; filename: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("conversation_id", conversationId);
+    return await apiRequest("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
   async *sendChatMessage(
     conversationId: string,
     message: string,
     rawFiles: File[] = [],
+    attachments: FileAttachment[] = [],
     mode: "chat" | "image" | "video" = "chat",
     webSearch: boolean = false,
     userMessageId?: string,
@@ -380,6 +394,10 @@ export const api = {
     }
     if (assistantMessageId) {
       formData.append("assistant_message_id", assistantMessageId);
+    }
+    
+    if (attachments && attachments.length > 0) {
+      formData.append("attachments_metadata", JSON.stringify(attachments));
     }
 
     if (rawFiles && rawFiles.length > 0) {

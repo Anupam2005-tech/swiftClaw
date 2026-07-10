@@ -18,7 +18,9 @@ class AgentState(TypedDict):
     max_retries: int
     critique: str
     provider_generator: str
+    model_generator: str
     provider_evaluator: str
+    model_evaluator: str
     session_id: str
     user_id: str
     complexity: Literal["simple", "medium", "complex"]

@@ -8,6 +8,7 @@ import { ToolCallIndicator } from "./ToolCallIndicator";
 import { SourcesPanel } from "./SourcesPanel";
 import { ImageMessage } from "./ImageMessage";
 import { VideoJobCard } from "./VideoJobCard";
+import { ThinkingPanel } from "./ThinkingPanel";
 import { RefreshCw, AlertCircle, Terminal, Copy, Check, X, Maximize2, Pencil, ArrowLeft, Clock, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -417,40 +418,85 @@ function FormattedContent({
         }
 
         // It is a text part
-        if (!part.trim()) return null;
+        if (!part.trim() && index !== lastTextIndex) return null;
 
-        const subParts = part.split(/(`[^`\n]+`)/g);
+        const renderInline = (text: string) => {
+          const subParts = text.split(/(`[^`\n]+`)/g);
+          return subParts.map((subPart, sIdx) => {
+            if (subPart.startsWith("`") && subPart.endsWith("`")) {
+              return (
+                <code key={sIdx} className="bg-white/15 text-white px-1.5 py-0.5 rounded font-semibold text-[13px] md:text-[14px] tracking-wide">
+                  {subPart.slice(1, -1)}
+                </code>
+              );
+            }
+            const boldParts = subPart.split(/(\*\*[^*\n]+\*\*)/g);
+            return (
+              <span key={sIdx}>
+                {boldParts.map((bPart, bIdx) => {
+                  if (bPart.startsWith("**") && bPart.endsWith("**")) {
+                    return (
+                      <strong key={bIdx} className="font-extrabold text-white text-[14px] md:text-[15px]">
+                        {bPart.slice(2, -2)}
+                      </strong>
+                    );
+                  }
+                  return bPart;
+                })}
+              </span>
+            );
+          });
+        };
+
+        const lines = part.split("\n");
         const textElement = (
-          <div className="whitespace-pre-wrap break-words leading-relaxed text-[11px] md:text-[11px] text-white font-semibold">
-            {subParts.map((subPart, sIdx) => {
-              if (subPart.startsWith("`") && subPart.endsWith("`")) {
+          <div className="flex flex-col text-[11.5px] md:text-[12px] text-white/90 font-medium leading-relaxed break-words gap-[3px]">
+            {lines.map((line, lIdx) => {
+              if (!line.trim()) return <div key={lIdx} className="h-2" />;
+
+              const headingMatch = line.trim().match(/^(#{1,6})\s+(.*)$/);
+              if (headingMatch) {
+                const level = headingMatch[1].length;
+                const text = headingMatch[2];
+                let cls = "text-[18px] md:text-[20px] font-bold mt-4 mb-2 text-white tracking-tight";
+                if (level === 1) cls = "text-[26px] md:text-[30px] font-black mt-6 mb-3 text-white tracking-tight leading-tight";
+                if (level === 2) cls = "text-[22px] md:text-[26px] font-extrabold mt-5 mb-3 text-white tracking-tight leading-tight";
+                if (level === 3) cls = "text-[20px] md:text-[22px] font-bold mt-4 mb-2 text-white tracking-tight";
+                
+                return <div key={lIdx} className={cls}>{renderInline(text)}</div>;
+              }
+
+              const ulMatch = line.match(/^(\s*)([-*])\s+(.*)$/);
+              if (ulMatch) {
+                const indent = Math.floor(ulMatch[1].length / 2);
                 return (
-                  <code key={sIdx} className="bg-white/10 text-white px-1.5 py-0.5 rounded font-semibold text-[12px] md:text-[12px]">
-                    {subPart.slice(1, -1)}
-                  </code>
+                  <div key={lIdx} className="flex gap-2.5 items-start mt-1.5 mb-0.5 text-[14px] md:text-[15px]" style={{ marginLeft: `${indent * 12}px` }}>
+                    <span className="text-white/60 select-none text-[16px] leading-tight mt-[1px]">•</span>
+                    <div className="flex-1 text-white/95">{renderInline(ulMatch[3])}</div>
+                  </div>
                 );
               }
 
-              const boldParts = subPart.split(/(\*\*[^*\n]+\*\*)/g);
-              return (
-                <span key={sIdx}>
-                  {boldParts.map((bPart, bIdx) => {
-                    if (bPart.startsWith("**") && bPart.endsWith("**")) {
-                      return (
-                        <strong key={bIdx} className="font-bold text-white">
-                          {bPart.slice(2, -2)}
-                        </strong>
-                      );
-                    }
-                    return bPart;
-                  })}
-                </span>
-              );
+              const olMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+              if (olMatch) {
+                const indent = Math.floor(olMatch[1].length / 2);
+                const num = olMatch[2];
+                return (
+                  <div key={lIdx} className="flex gap-2 items-start mt-1.5 mb-0.5 text-[14px] md:text-[15px]" style={{ marginLeft: `${indent * 12}px` }}>
+                    <span className="text-white/60 select-none font-mono text-[13px] min-w-[16px] text-right mt-[3px]">{num}.</span>
+                    <div className="flex-1 text-white/95">{renderInline(olMatch[3])}</div>
+                  </div>
+                );
+              }
+
+              return <div key={lIdx} className="min-h-[1.2em] text-[12px]">{renderInline(line)}</div>;
             })}
             {index === lastTextIndex && (
-              <span className="inline-flex ml-1.5">
-                <BlinkingDots />
-              </span>
+              <div className="mt-1">
+                <span className="inline-flex ml-1.5">
+                  <BlinkingDots />
+                </span>
+              </div>
             )}
           </div>
         );
@@ -558,17 +604,24 @@ export function MessageBubble({
       "flex w-full py-2",
       isUser ? "justify-end" : "justify-start"
     )}>
-      {/* AI: streaming, no content yet — show icon + typewriter (no skeleton) */}
+      {/* AI: streaming, no content yet — show typewriter OR the thinking panel if thinking tokens arrived */}
       {!isUser && isStreaming && !message.content ? (
-        <div className="flex items-center gap-2.5 select-none">
-          <div className="h-7 w-7 flex items-center justify-center shrink-0">
-            <Terminal className="h-3.5 w-3.5 text-sc-accent" />
+        message.thinking ? (
+          // Thinking tokens are streaming — show the thinking panel immediately
+          <div className="w-full max-w-[95%] sm:max-w-[90%] md:max-w-[80%]">
+            <ThinkingPanel thinking={message.thinking} isStreaming={true} />
           </div>
-          <span className="text-xs font-semibold text-sc-accent">
-            <TypewriterStatus />
-          </span>
-          <BlinkingDots />
-        </div>
+        ) : (
+          <div className="flex items-center gap-2.5 select-none">
+            <div className="h-7 w-7 flex items-center justify-center shrink-0">
+              <Terminal className="h-3.5 w-3.5 text-sc-accent" />
+            </div>
+            <span className="text-xs font-semibold text-sc-accent">
+              <TypewriterStatus />
+            </span>
+            <BlinkingDots />
+          </div>
+        )
       ) : (
         <Skeleton name="message-bubble" loading={isLoading} animate="pulse">
          <div className={cn(
@@ -616,6 +669,14 @@ export function MessageBubble({
               </div>
             ) : (
               <div className="w-full flex flex-col gap-2.5 items-start">
+                {/* Thinking panel — rendered before the main content */}
+                {!isUser && message.thinking && (
+                  <ThinkingPanel
+                    thinking={message.thinking}
+                    isStreaming={isStreaming}
+                  />
+                )}
+
                 {message.content && (
                   <FormattedContent content={message.content} isUser={false} isStreaming={isStreaming} />
                 )}

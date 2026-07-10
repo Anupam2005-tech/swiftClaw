@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from app.db.firestore import db
+from app.core.auth.cache import session_cache
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -46,6 +47,7 @@ def is_session_valid(uid: str, session_id: str) -> bool:
 
 def delete_session(uid: str, session_id: str):
     db.collection("users").document(uid).collection("sessions").document(session_id).delete()
+    session_cache.invalidate(f"{uid}:{session_id}")
     logger.info("session_deleted", uid=uid, session_id=session_id)
 
 def delete_all_sessions(uid: str):
@@ -54,4 +56,12 @@ def delete_all_sessions(uid: str):
     for session in sessions:
         batch.delete(session.reference)
     batch.commit()
+    
+    # Invalidate all in-memory sessions for this user
+    prefix = f"{uid}:"
+    with session_cache.lock:
+        keys_to_del = [k for k in session_cache.cache if k.startswith(prefix)]
+        for k in keys_to_del:
+            session_cache.cache.pop(k, None)
+            
     logger.info("all_sessions_deleted", uid=uid)

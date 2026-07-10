@@ -1,5 +1,6 @@
 export type SSEEvent =
   | { type: "text_delta"; content: string }
+  | { type: "thinking_delta"; content: string }
   | { type: "tool_call"; id: string; tool: string; args: Record<string, unknown> }
   | { type: "tool_result"; id: string; tool: string; content: string }
   | { type: "provider_switch"; from: string; to: string; reason: string }

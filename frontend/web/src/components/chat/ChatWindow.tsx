@@ -3,6 +3,7 @@
 import React, { useCallback } from "react";
 import { useConversations } from "@/lib/hooks/useConversations";
 import { useChatStream } from "@/lib/hooks/useChatStream";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { MessageList } from "./MessageList";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import { ModelDropdown } from "./ModelDropdown";
@@ -59,6 +60,13 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
     window.dispatchEvent(new CustomEvent("conversations-updated"));
   }, []);
 
+  const [isMounted, setIsMounted] = React.useState(false);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const {
     messages,
     messagesLoading,
@@ -68,6 +76,9 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
     pinConversation,
     deleteConversation,
   } = useConversations(conversationId);
+
+  const showCenteredInput = messages.length === 0 && (!isMounted || isDesktop);
+  const showBottomInput = messages.length > 0 || (isMounted && !isDesktop);
 
   const currentConversation = conversations.find((c) => c.id === conversationId);
   const isPinned = currentConversation?.pinned || false;
@@ -170,6 +181,15 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
       for (const f of rawFiles) {
         try {
           const attachment = await fileToAttachment(f);
+          
+          // Upload to Cloudflare R2 via backend
+          try {
+            const uploadRes = await api.uploadFile(f, conversationId);
+            attachment.storageUrl = uploadRes.url;
+          } catch (uploadError) {
+            console.error("Failed to upload file to storage:", uploadError);
+          }
+          
           attachments.push(attachment);
         } catch (e) {
           console.error("Failed to read file:", f.name, e);
@@ -267,26 +287,28 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
                 </p>
 
                 {/* Input box centered */}
-                <motion.div
-                  layoutId="main-prompt-input"
-                  className="w-full max-w-2xl flex flex-col gap-2"
-                >
-                  <div className="flex items-center justify-between px-1">
-                    <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={handleWebSearchChange} />
+                {showCenteredInput && (
+                  <motion.div
+                    layoutId="main-prompt-input"
+                    className="w-full max-w-2xl flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between px-1">
+                      <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={handleWebSearchChange} />
 
-                    
-                    <span className="text-[10px] text-sc-text-muted/30 font-mono">
-                      swiftClaw
-                    </span>
-                  </div>
-                  <PromptInputBox
-                    onSend={handleSend}
-                    onStop={stopGeneration}
-                    isLoading={streaming}
-                    placeholder="Message swiftClaw..."
-                    userMessages={userMessages}
-                  />
-                </motion.div>
+                      
+                      <span className="text-[10px] text-sc-text-muted/30 font-mono">
+                        swiftClaw
+                      </span>
+                    </div>
+                    <PromptInputBox
+                      onSend={handleSend}
+                      onStop={stopGeneration}
+                      isLoading={streaming}
+                      placeholder="Message swiftClaw..."
+                      userMessages={userMessages}
+                    />
+                  </motion.div>
+                )}
               </div>
 
               {/* Mobile Empty State */}
@@ -315,29 +337,31 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
         </div>
 
         {/* Input Panel — centered with reduced width, hidden on desktop when new chat */}
-        <div className={cn(
-          "p-4 bg-[var(--chat-bg)] border-t border-[var(--chat-border)] shrink-0 flex justify-center z-10",
-          messages.length === 0 && "lg:hidden"
-        )}>
-          <motion.div
-            layoutId="main-prompt-input"
-            className="w-full max-w-2xl flex flex-col gap-2"
-          >
-            <div className="flex items-center justify-between px-1">
-              <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={handleWebSearchChange} />
-              <span className="text-[10px] text-sc-text-muted/30 font-mono">
-                swiftClaw
-              </span>
-            </div>
-            <PromptInputBox
-              onSend={handleSend}
-              onStop={stopGeneration}
-              isLoading={streaming}
-              placeholder="Message swiftClaw..."
-              userMessages={userMessages}
-            />
-          </motion.div>
-        </div>
+        {showBottomInput && (
+          <div className={cn(
+            "p-4 bg-[var(--chat-bg)] border-t border-[var(--chat-border)] shrink-0 flex justify-center z-10",
+            messages.length === 0 && "lg:hidden"
+          )}>
+            <motion.div
+              layoutId="main-prompt-input"
+              className="w-full max-w-2xl flex flex-col gap-2"
+            >
+              <div className="flex items-center justify-between px-1">
+                <ModelDropdown webSearchEnabled={webSearchEnabled} onWebSearchChange={handleWebSearchChange} />
+                <span className="text-[10px] text-sc-text-muted/30 font-mono">
+                  swiftClaw
+                </span>
+              </div>
+              <PromptInputBox
+                onSend={handleSend}
+                onStop={stopGeneration}
+                isLoading={streaming}
+                placeholder="Message swiftClaw..."
+                userMessages={userMessages}
+              />
+            </motion.div>
+          </div>
+        )}
       </div>
 
       <Modal

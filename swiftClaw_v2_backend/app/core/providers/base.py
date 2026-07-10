@@ -3,7 +3,7 @@ from typing import AsyncIterator, Literal, TypedDict, Dict, Any, Optional
 from pydantic import BaseModel
 
 class StreamChunk(TypedDict):
-    type: Literal["text", "tool_call", "error", "done", "provider_switch", "low_confidence"]
+    type: Literal["text", "thinking", "tool_call", "error", "done", "provider_switch", "low_confidence"]
     content: Optional[str]
     metadata: Optional[Dict[str, Any]]
     tool: Optional[str]
@@ -26,16 +26,10 @@ class ProviderCapabilities(BaseModel):
     input_cost_per_1k: float = 0.0
     output_cost_per_1k: float = 0.0
 
-class ProviderErrorCode(str):
-    rate_limited = "rate_limited"
-    quota_exceeded = "quota_exceeded"
-    invalid_key = "invalid_key"
-    unavailable = "unavailable"
-    unsupported_capability = "unsupported_capability"
-    unknown = "unknown"
+ErrorCode = Literal["rate_limited", "quota_exceeded", "invalid_key", "unavailable", "unsupported_capability", "unknown"]
 
 class ProviderError(Exception):
-    def __init__(self, code: str, retryable: bool, message: str):
+    def __init__(self, code: ErrorCode, retryable: bool, message: str):
         self.code = code
         self.retryable = retryable
         self.message = message

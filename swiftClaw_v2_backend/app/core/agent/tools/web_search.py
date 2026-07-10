@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", message=".*has been renamed to.*ddgs.*", category=RuntimeWarning)
 from duckduckgo_search import DDGS
 from langchain_core.tools import tool
 import structlog

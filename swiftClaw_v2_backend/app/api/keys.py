@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import List, Optional
@@ -67,6 +68,7 @@ async def delete_key(
     """
     uid = current_user["uid"]
     remove_api_key(uid, provider)
+    await asyncio.to_thread(invalidate_cache, uid, provider)
     logger.info("api_key_removed", uid=uid, provider=provider)
 
 @router.post("/{provider}/refresh", status_code=status.HTTP_200_OK)
@@ -84,7 +86,7 @@ async def refresh_provider_models(
     if not api_key:
         raise HTTPException(status_code=404, detail={"code": "key_not_found", "message": f"No API key found for {provider}"})
     
-    invalidate_cache(uid, provider)
+    await asyncio.to_thread(invalidate_cache, uid, provider)
     
     try:
         models = await discover_models(provider, api_key)
@@ -94,7 +96,7 @@ async def refresh_provider_models(
             if m["id"] not in seen:
                 seen.add(m["id"])
                 deduped.append(m)
-        set_cached_models(uid, provider, deduped)
+        await asyncio.to_thread(set_cached_models, uid, provider, deduped)
         logger.info("models_refreshed", uid=uid, provider=provider, count=len(deduped))
         return {"provider": provider, "models": deduped, "cached": False, "error": None}
     except ModelDiscoveryError as e:
@@ -115,7 +117,7 @@ async def get_provider_models(
     """
     uid = current_user["uid"]
 
-    cached = get_cached_models(uid, provider)
+    cached = await asyncio.to_thread(get_cached_models, uid, provider)
     if cached is not None:
         logger.debug("model_cache_hit", uid=uid, provider=provider)
         return {"provider": provider, "models": cached, "cached": True}
@@ -133,7 +135,7 @@ async def get_provider_models(
             if m["id"] not in seen:
                 seen.add(m["id"])
                 deduped.append(m)
-        set_cached_models(uid, provider, deduped)
+        await asyncio.to_thread(set_cached_models, uid, provider, deduped)
         logger.info("models_discovered", uid=uid, provider=provider, count=len(deduped))
         return {"provider": provider, "models": deduped, "cached": False, "error": None}
     except ModelDiscoveryError as e:
@@ -155,7 +157,7 @@ async def get_all_models(current_user: dict = Depends(get_current_user)):
     result = {}
     for k in keys_meta:
         provider = k["provider"]
-        cached = get_cached_models(uid, provider)
+        cached = await asyncio.to_thread(get_cached_models, uid, provider)
         if cached is not None:
             result[provider] = cached
             continue
@@ -173,7 +175,7 @@ async def get_all_models(current_user: dict = Depends(get_current_user)):
                 if m["id"] not in seen:
                     seen.add(m["id"])
                     deduped.append(m)
-            set_cached_models(uid, provider, deduped)
+            await asyncio.to_thread(set_cached_models, uid, provider, deduped)
             result[provider] = {"models": deduped, "error": None}
         except ModelDiscoveryError as e:
             logger.warning("model_discovery_error", provider=provider, code=e.code, detail=e.detail)

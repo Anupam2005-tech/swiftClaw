@@ -1,56 +1,73 @@
 from datetime import datetime, timezone
+from google.cloud import firestore
 from app.db.firestore import db
 import uuid
 
 def create_conversation_doc(uid: str, conversation_id: str, title: str = "New Conversation") -> None:
-    conv_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id)
-    now = datetime.now(timezone.utc)
+    conv_ref = db.collection("conversations").document(conversation_id)
     conv_ref.set({
         "title": title,
-        "created_at": now,
-        "updated_at": now,
-        "summary": "",
-        "metadata": {}
+        "ownerId": uid,
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "updated_at": firestore.SERVER_TIMESTAMP,
+        "summary": ""
     })
 
-def add_message_doc(uid: str, conversation_id: str, role: str, content: str, status: str = "completed", metadata: dict = None, attachments: list[dict] = None, message_id: str = None) -> str:
+def add_message_doc(uid: str, conversation_id: str, role: str, content: str, status: str = "ok", metadata: dict = None, attachments: list[dict] = None, message_id: str = None, error_code: str = None) -> str:
     msg_id = message_id or str(uuid.uuid4())
-    msg_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id).collection("messages").document(msg_id)
+    msg_ref = db.collection("conversations").document(conversation_id).collection("messages").document(msg_id)
     
-    now = datetime.now(timezone.utc)
     msg_doc = {
         "role": role,
         "content": content,
-        "created_at": now,
+        "created_at": firestore.SERVER_TIMESTAMP,
         "status": status,
-        "metadata": metadata or {}
     }
+    if metadata:
+        msg_doc["metadata"] = metadata
     if attachments:
         msg_doc["attachments"] = attachments
-    
+    if error_code:
+        msg_doc["errorCode"] = error_code
+        
     msg_ref.set(msg_doc)
     
     # Update conversation updated_at
-    db.collection("users").document(uid).collection("conversations").document(conversation_id).update({
-        "updated_at": now
+    db.collection("conversations").document(conversation_id).update({
+        "updated_at": firestore.SERVER_TIMESTAMP
     })
     
     return msg_id
 
 def get_conversation_history(uid: str, conversation_id: str, limit: int = 50) -> list[dict]:
-    messages_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id).collection("messages")
+    # Ensure ownerId matches, though we could just rely on backend auth checks before this
+    messages_ref = db.collection("conversations").document(conversation_id).collection("messages")
     docs = messages_ref.order_by("created_at").limit(limit).stream()
     
     history = []
     for doc in docs:
         data = doc.to_dict()
         data["id"] = doc.id
+        
+        # Map short DB enums back to expected API values
+        if data.get("role") == "u":
+            data["role"] = "user"
+        elif data.get("role") == "a":
+            data["role"] = "assistant"
+            
+        if data.get("status") == "ok":
+            data["status"] = "completed"
+        elif data.get("status") == "failed":
+            data["status"] = "error"
+            
+        # Convert timestamp for frontend if needed, but fastapi will serialize datetime objects
         history.append(data)
     return history
 
 def list_conversations(uid: str, limit: int = 100) -> list[dict]:
-    conv_ref = db.collection("users").document(uid).collection("conversations")
-    docs = conv_ref.order_by("updated_at", direction="DESCENDING").limit(limit).stream()
+    conv_ref = db.collection("conversations")
+    # Requires a composite index for where and order_by
+    docs = conv_ref.where("ownerId", "==", uid).order_by("updated_at", direction=firestore.Query.DESCENDING).limit(limit).stream()
     
     conversations = []
     for doc in docs:
@@ -62,23 +79,22 @@ def list_conversations(uid: str, limit: int = 100) -> list[dict]:
     conversations.sort(
         key=lambda x: (
             x.get("pinned", False),
-            x.get("updated_at")
+            x.get("updated_at") if isinstance(x.get("updated_at"), datetime) else datetime.min.replace(tzinfo=timezone.utc)
         ),
         reverse=True
     )
     return conversations
 
 def pin_conversation_doc(uid: str, conversation_id: str, pinned: bool) -> None:
-    doc_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id)
+    doc_ref = db.collection("conversations").document(conversation_id)
     doc = doc_ref.get()
     if not doc.exists:
-        now = datetime.now(timezone.utc)
         doc_ref.set({
             "title": "New Conversation",
-            "created_at": now,
-            "updated_at": now,
+            "ownerId": uid,
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "updated_at": firestore.SERVER_TIMESTAMP,
             "summary": "",
-            "metadata": {},
             "pinned": pinned
         })
     else:
@@ -88,15 +104,15 @@ def pin_conversation_doc(uid: str, conversation_id: str, pinned: bool) -> None:
 
 def get_conversation_summary(uid: str, conversation_id: str) -> str:
     """Reads the rolling summary stored on a conversation document."""
-    conv_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id)
+    conv_ref = db.collection("conversations").document(conversation_id)
     doc = conv_ref.get()
     if doc.exists:
         return doc.to_dict().get("summary", "")
     return ""
 
 def delete_conversation_doc(uid: str, conversation_id: str) -> None:
-    # Delete messages subcollection in paginated batches (Firestore max 500 ops per batch)
-    messages_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id).collection("messages")
+    # Delete messages subcollection in paginated batches
+    messages_ref = db.collection("conversations").document(conversation_id).collection("messages")
     
     while True:
         docs = list(messages_ref.limit(500).stream())
@@ -108,48 +124,46 @@ def delete_conversation_doc(uid: str, conversation_id: str) -> None:
         batch.commit()
     
     # Delete main conversation doc
-    db.collection("users").document(uid).collection("conversations").document(conversation_id).delete()
+    db.collection("conversations").document(conversation_id).delete()
 
-def update_message_doc(uid: str, conversation_id: str, message_id: str, content: str, status: str = "completed", metadata: dict = None, attachments: list[dict] = None) -> None:
-    msg_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id).collection("messages").document(message_id)
-    now = datetime.now(timezone.utc)
+def update_message_doc(uid: str, conversation_id: str, message_id: str, content: str, status: str = "ok", metadata: dict = None, attachments: list[dict] = None, error_code: str = None) -> None:
+    msg_ref = db.collection("conversations").document(conversation_id).collection("messages").document(message_id)
     msg_doc = {
         "content": content,
         "status": status,
     }
-    if metadata is not None:
+    if metadata:
         msg_doc["metadata"] = metadata
-    if attachments is not None:
+    if attachments:
         msg_doc["attachments"] = attachments
+    if error_code:
+        msg_doc["errorCode"] = error_code
+        
     msg_ref.update(msg_doc)
     
     # Update conversation updated_at
-    db.collection("users").document(uid).collection("conversations").document(conversation_id).update({
-        "updated_at": now
+    db.collection("conversations").document(conversation_id).update({
+        "updated_at": firestore.SERVER_TIMESTAMP
     })
 
 def share_conversation_doc(uid: str, conversation_id: str) -> dict:
-    # 1. Fetch conversation info
-    conv_ref = db.collection("users").document(uid).collection("conversations").document(conversation_id)
+    conv_ref = db.collection("conversations").document(conversation_id)
     conv_doc = conv_ref.get()
     if not conv_doc.exists:
         return None
     conv_data = conv_doc.to_dict()
     
-    # 2. Fetch all messages
     messages = get_conversation_history(uid, conversation_id, limit=100)
     
-    # Format messages timestamps
     for msg in messages:
         for k, v in list(msg.items()):
             if isinstance(v, datetime):
                 msg[k] = v.isoformat()
     
-    # 3. Save to top-level 'shares' collection
     share_ref = db.collection("shares").document(conversation_id)
     share_ref.set({
         "title": conv_data.get("title", "Shared Conversation"),
-        "created_at": datetime.now(timezone.utc),
+        "created_at": firestore.SERVER_TIMESTAMP,
         "owner_id": uid,
         "messages": messages
     })

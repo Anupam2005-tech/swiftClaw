@@ -15,6 +15,14 @@ def load_master_key() -> None:
         return
         
     try:
+        # Check settings/env variable first (useful for free serverless/local setups without GCP billing)
+        if settings.master_key:
+            _master_key = base64.b64decode(settings.master_key)
+            if len(_master_key) != 32:
+                raise ValueError("master_key from settings/env must be exactly 32 bytes when decoded.")
+            logger.info("master_key_loaded", source="env")
+            return
+
         # For local development / testing without GCP
         if os.environ.get("MOCK_SECRET_MANAGER") == "true" or not settings.gcp_project_id:
             logger.warning("using_mock_master_key", reason="GCP project ID not configured or mock enabled")
@@ -32,7 +40,7 @@ def load_master_key() -> None:
         if len(_master_key) != 32:
             raise ValueError("Master key must be exactly 32 bytes.")
             
-        logger.info("master_key_loaded")
+        logger.info("master_key_loaded", source="secret_manager")
     except Exception as e:
         logger.error("master_key_load_failed", error=str(e))
         raise RuntimeError("Failed to load master encryption key") from e

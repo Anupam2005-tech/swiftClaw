@@ -1,10 +1,14 @@
 from typing import AsyncIterator, Any, Optional, Tuple
 import re
+import warnings
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, AIMessageChunk
 from app.core.providers.base import ModelAdapter, ProviderCapabilities, StreamChunk, ProviderError
 from app.core.providers.model_discovery import get_cached_models
 import structlog
+
+# Suppress upstream deprecation warnings from google.genai internals
+warnings.filterwarnings("ignore", message=".*AiohttpClientSession.*", category=DeprecationWarning)
 
 logger = structlog.get_logger(__name__)
 
@@ -16,7 +20,6 @@ class GeminiAdapter(ModelAdapter):
             model=model,
             google_api_key=api_key,
             request_timeout=30,
-            convert_system_message_to_human=True,
         )
 
     @property
@@ -59,13 +62,12 @@ class GeminiAdapter(ModelAdapter):
         return converted
 
     async def stream(self, messages: list[Any], tools: Optional[list[Any]] = None, **kwargs) -> AsyncIterator[StreamChunk]:
-        gemini_messages = self._convert_to_gemini_messages(messages)
         llm_with_tools = self.llm
         if tools and self.capabilities.supports_tools:
             llm_with_tools = self.llm.bind_tools(tools)
         
         try:
-            async for chunk in llm_with_tools.astream(gemini_messages, **kwargs):
+            async for chunk in llm_with_tools.astream(messages, **kwargs):
                 if isinstance(chunk, AIMessageChunk):
                     if getattr(chunk, "tool_calls", None):
                         for tool_call in chunk.tool_calls:
@@ -77,6 +79,18 @@ class GeminiAdapter(ModelAdapter):
                                 "message": None, "code": None, "from_provider": None,
                                 "to_provider": None, "reason": None, "message_id": None
                             }
+                    # Detect Gemini thinking tokens:
+                    # Gemini 2.x thinking models expose thought content via additional_kwargs
+                    additional = getattr(chunk, "additional_kwargs", {}) or {}
+                    thought_text = additional.get("thought") or additional.get("thinking")
+                    if thought_text and isinstance(thought_text, str):
+                        yield {
+                            "type": "thinking",
+                            "content": thought_text,
+                            "tool": None, "args": None, "metadata": None,
+                            "confidence": None, "message": None, "code": None,
+                            "from_provider": None, "to_provider": None, "reason": None, "message_id": None
+                        }
                     if chunk.content:
                         yield {
                             "type": "text",
@@ -127,14 +141,9 @@ class OpenAIAdapter(ModelAdapter):
         if tools and self.capabilities.supports_tools:
             llm_with_tools = self.llm.bind_tools(tools)
         
-        total_tokens = 0
         try:
             async for chunk in llm_with_tools.astream(messages, stream_options={"include_usage": True}, **kwargs):
                 if isinstance(chunk, AIMessageChunk):
-                    # Extract usage if present
-                    if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
-                        total_tokens = chunk.usage_metadata.get("total_tokens", 0)
-                    
                     if getattr(chunk, "tool_calls", None):
                         for tool_call in chunk.tool_calls:
                             yield {
@@ -308,15 +317,15 @@ def validate_model_for_provider_for_user(uid: str, provider: str, model: str) ->
     return any(m["id"] == model for m in cached)
 
 
-def get_adapter(provider: str, api_key: str, model: str, capabilities: dict = None) -> ModelAdapter:
+def get_adapter(provider: str, api_key: str, model: str, discovered_metadata: dict = None) -> ModelAdapter:
     """Factory function to instantiate the correct native adapter."""
     if provider == "gemini":
-        return GeminiAdapter(api_key, model, capabilities)
+        return GeminiAdapter(api_key, model, discovered_metadata)
     elif provider == "openai":
-        return OpenAIAdapter(api_key, model, capabilities)
+        return OpenAIAdapter(api_key, model, discovered_metadata)
     elif provider == "groq":
-        return GroqAdapter(api_key, model, capabilities)
+        return GroqAdapter(api_key, model, discovered_metadata)
     elif provider == "nvidia":
-        return NVIDIAAdapter(api_key, model, capabilities)
+        return NVIDIAAdapter(api_key, model, discovered_metadata)
     else:
         raise ProviderError(code="unsupported_capability", retryable=False, message=f"Unsupported provider: {provider}")

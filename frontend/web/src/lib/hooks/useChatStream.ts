@@ -72,6 +72,7 @@ export const useChatStream = (
       }
 
       let currentText = "";
+      let currentThinking = "";
       let currentToolCalls: ToolCall[] = [];
       let lastEvent: SSEEvent | null = null;
 
@@ -80,6 +81,7 @@ export const useChatStream = (
           conversationId,
           text,
           rawFiles,
+          attachments,
           mode,
           webSearchEnabled,
           userMessageId,
@@ -100,6 +102,17 @@ export const useChatStream = (
                 prev.map((msg) =>
                   msg.id === assistantMsgId
                     ? { ...msg, content: currentText }
+                    : msg
+                )
+              );
+              break;
+
+            case "thinking_delta":
+              currentThinking += event.content;
+              setMessagesList((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId
+                    ? { ...msg, thinking: currentThinking }
                     : msg
                 )
               );
@@ -229,6 +242,7 @@ export const useChatStream = (
           id: assistantMsgId,
           role: "assistant" as const,
           content: currentText,
+          thinking: currentThinking || undefined,
           tool_calls: currentToolCalls,
           status: lastEvent?.type === "error" ? ("error" as const) : activeStreamRef.current ? ("done" as const) : ("interrupted" as const),
           provider: lastEvent?.type === "provider_switch" ? (lastEvent.to as any) : undefined,

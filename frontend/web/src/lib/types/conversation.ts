@@ -8,6 +8,7 @@ export interface FileAttachment {
   dataUrl?: string; // base64 or object URL for client preview
   contentUrl?: string; // final URL
   content?: string; // persisted base64 (images) or text (documents) from Firestore
+  storageUrl?: string; // Firebase Storage URL
 }
 
 export interface Source {
@@ -29,6 +30,7 @@ export interface Message {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  thinking?: string; // LLM reasoning/thinking tokens (Claude, Gemini thinking models)
   created_at: string;
   provider?: ProviderId;
   model?: string;
